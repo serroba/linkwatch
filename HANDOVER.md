@@ -11,6 +11,9 @@ engineering fundamentals for a potential free, open-source release.
 
 - Set up and verify CI **before implementing the application**.
 - Use Git for source control and make regular, small commits after checks pass.
+- Use feature branches and pull requests; never push directly to main. Merge only
+  after the latest PR commit has a green pipeline. This supersedes the original
+  bootstrap push sequence below.
 - Use the `gh` CLI for most GitHub actions.
 - Include meaningful tests, formatting/lint checks and CI from the beginning.
 - Work autonomously towards a working app once CI is established.
@@ -18,6 +21,27 @@ engineering fundamentals for a potential free, open-source release.
 - Do not spawn parallel agents unless subsequently authorised.
 
 ## Repository and current state
+
+### Session update
+
+- Bootstrap commit `ab79bbd` passed GitHub CI (run `41143771890`).
+- Swift core commit `2deda23` passed macOS build, formatting and five tests on
+  GitHub (run `41146201194`); local Swift tests also passed.
+- These two commits were pushed directly before the user corrected the workflow.
+  All subsequent changes must go through PRs with green CI before merge.
+- Main now requires PRs and `CI required`, including administrators. Zero review
+  approvals are required to allow a solo owner contribution path.
+- Git writes and network commands work with execution approval. Sandboxed GitHub
+  authentication errors were misleading; authentication succeeds with access.
+- Local Swift tests require approval for compiler/package caches. Command Line
+  Tools successfully build and run Swift Testing despite linker search-path warnings.
+- `actionlint` is installed locally and validated the workflow.
+- `LinkWatchCore` now provides bounded statistics and sustained health decisions;
+  exact timing semantics are documented in `docs/monitoring.md`.
+- Profile validation and session-generation gating are the next PR. The native
+  app, probe adapter and live verification remain to be implemented.
+
+### Original bootstrap snapshot (historical)
 
 - GitHub: https://github.com/serroba/linkwatch
 - Local project: `/Users/sebastian/linkwatch`

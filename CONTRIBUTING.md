@@ -2,6 +2,11 @@
 
 CI comes before application implementation. Make small commits and keep checks green.
 
+Use a feature branch and pull request for every change. Do not push directly to
+`main`. Wait for the PR's latest commit to pass all CI jobs before merging; never
+bypass required checks. Main requires a PR and `CI required`, including for admins.
+No approving review is required, so the solo owner can merge a green PR.
+
 Run repository checks from the repository root after staging new files:
 
 ```sh
