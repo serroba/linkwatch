@@ -55,6 +55,8 @@ jobs:
       - name: Build with warnings as errors
         run: swift build -Xswiftc -warnings-as-errors
       - name: Run tests
+        env:
+          LINKWATCH_TEST_LOOPBACK: '1'
         run: swift test --parallel -Xswiftc -warnings-as-errors
 
   required:
