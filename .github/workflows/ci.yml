@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      swift-package: ${{ steps.package.outputs.present }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check whitespace and conflict markers
+        run: python3 scripts/check_repository.py
+      - name: Detect Swift package
+        id: package
+        shell: bash
+        run: |
+          if [[ -f Package.swift ]]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  swift:
+    name: Swift build, tests and formatting
+    needs: repository
+    if: needs.repository.outputs.swift-package == 'true'
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Show toolchain
+        run: swift --version
+      - name: Lint Swift formatting
+        run: swift format lint --strict --recursive Package.swift Sources Tests
+      - name: Build with warnings as errors
+        run: swift build -Xswiftc -warnings-as-errors
+      - name: Run tests
+        run: swift test --parallel -Xswiftc -warnings-as-errors
+
+  required:
+    name: CI required
+    if: always()
+    needs: [repository, swift]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Verify all checks
+        env:
+          REPOSITORY_RESULT: ${{ needs.repository.result }}
+          SWIFT_RESULT: ${{ needs.swift.result }}
+          HAS_PACKAGE: ${{ needs.repository.outputs.swift-package }}
+        run: |
+          test "$REPOSITORY_RESULT" = success
+          if [ "$HAS_PACKAGE" = true ]; then
+            test "$SWIFT_RESULT" = success
+          else
+            test "$SWIFT_RESULT" = skipped
+          fi
