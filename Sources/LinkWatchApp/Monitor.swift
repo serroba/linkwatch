@@ -36,6 +36,7 @@ final class Monitor: ObservableObject {
   }
 
   private func startLoops() {
+    observers += AppControl.listen(controller: controller, environment: environment)
     Task { [weak controller] in
       while let controller {
         controller.refresh()
@@ -112,11 +113,6 @@ final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDe
 
   func requestPermission() {
     NSApp.activate(ignoringOtherApps: true)
-    requestAuthorization()
-  }
-
-  /// Requests Location permission without touching `NSApp`, which headless runs lack.
-  func requestAuthorization() {
     location.requestWhenInUseAuthorization()
   }
 
