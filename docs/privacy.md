@@ -9,6 +9,7 @@ lists everything it measures, sends and stores.
 |---|---|---|
 | Location | macOS reveals the Wi-Fi name (SSID) and access point (BSSID) only to apps with Location permission. | It never requests or reads coordinates. |
 | Local Network | Needed to ping the router and access point on your network. | It does not browse or advertise services, and only sweeps the subnet when you click Find AP. |
+| Notifications (optional) | Asked only when you turn on **Notify me when a problem lasts 3 minutes**. | Notifications are shown on this Mac only; nothing is sent anywhere. |
 
 ## Traffic it sends
 

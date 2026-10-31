@@ -17,6 +17,7 @@ final class Monitor: ObservableObject {
   let controller: MonitorController
   let environment: SystemEnvironment
   private let pathMonitor = NWPathMonitor()
+  private let notifier = ProblemNotifier()
   private var observers: [any NSObjectProtocol] = []
 
   /// Only the menu bar app records history; command-line runs read it, so they can never
@@ -66,9 +67,10 @@ final class Monitor: ObservableObject {
           controller?.record(.quit)
         }
       })
-    Task { [weak controller] in
+    Task { [weak controller, notifier] in
       while let controller {
         controller.refresh()
+        notifier.update(controller)
         try? await Task.sleep(for: .milliseconds(500))
       }
     }

@@ -21,6 +21,7 @@ final class DetailOptions: ObservableObject {
   @Published var markText = ""
   @Published var markMessage: String?
   @Published var testDevice = "desk"
+  @Published var showDetails = false
 }
 
 /// Minute medians for one or seven days; red marks minutes with an alert or a lost reply.

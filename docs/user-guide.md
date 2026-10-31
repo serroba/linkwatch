@@ -43,6 +43,15 @@ Click the icon to open the panel. From the top:
   the most likely cause. Hover over one to see the measurements behind it.
 - **Pause monitoring**, **Settings…** and **Quit**.
 
+## A simpler panel and notifications
+
+In Settings, **Simple panel** shows only the advice, the **I restarted…** menu and the
+buttons; **Show details** opens the measurements and charts. **Notify me when a
+problem lasts 3 minutes** (off until you turn it on, when macOS asks once) sends one
+notification saying what to do, such as restarting the powerline adapters, and
+another when the connection is back to normal. Short blips, lag spikes, large
+downloads and a router that only ignores LinkWatch never notify.
+
 ## Marking what you were doing
 
 If you suspect something at home affects the connection (an electric desk, a

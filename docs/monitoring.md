@@ -108,6 +108,16 @@ router, whose loss grows by ten points) is named as most likely affected; otherw
 it says there is no clear effect. Correlation is evidence, not proof: repeat the
 activity at different times to rule out coincidence.
 
+## Notifications
+
+When turned on, a notification follows the live (sustained) verdict. It fires once a
+verdict among `accessPoint`, `bridge`, `routerUnreachable`, `internet` and
+`weakSignal` has lasted three minutes, with the panel's headline and action; a change
+between those verdicts during the same problem does not notify again. After a
+notification, `allClear` held for a minute sends "Back to normal". Other verdicts
+(spikes, `busy`, `routerSilent`) never notify, and stopping monitoring (pause, sleep,
+another network) resets the clock without a notice.
+
 ## Restarts
 
 **I restarted…** (or `restarted [DEVICE]`) records a `restarted` event naming the

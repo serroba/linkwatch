@@ -19,6 +19,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case diagnose(hours: Int, json: Bool)
   case clearHistory
   case openAtLogin(ProfileUpdate.Switch?)
+  case notifications(ProfileUpdate.Switch?)
   case export(days: Int, directory: String?, redact: Bool)
   case events(hours: Int, json: Bool)
   case mark(String)
@@ -95,6 +96,9 @@ public enum HeadlessCommand: Equatable, Sendable {
                              restarts, and what to change.
       incidents [--days N]   List problems in the last N days (default 7): when, how long,
                              the most likely cause and the evidence for each link.
+      notifications [on|off] Show or change whether LinkWatch notifies you when a problem
+                             lasts 3 minutes, and when it is back to normal (default off;
+                             turning it on asks macOS for permission once).
       open-at-login [on|off] Show or change whether LinkWatch starts at login, so monitoring
                              resumes after a restart.
       authorize              Report Location permission, which is granted from the app's
@@ -150,6 +154,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   {
     switch name {
     case "open-at-login": try openAtLogin(options)
+    case "notifications": try notifications(options)
     case "export": try export(options)
     case "mark": try mark(options)
     case "test-device": try testDevice(options)

@@ -93,11 +93,21 @@ extension HeadlessCommand {
   }
 
   static func openAtLogin(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
+    .openAtLogin(try setting("open-at-login", arguments))
+  }
+
+  static func notifications(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
+    .notifications(try setting("notifications", arguments))
+  }
+
+  private static func setting(_ name: String, _ arguments: [String]) throws(UsageError)
+    -> ProfileUpdate.Switch?
+  {
     switch arguments {
-    case []: return .openAtLogin(nil)
-    case ["on"]: return .openAtLogin(.enabled)
-    case ["off"]: return .openAtLogin(.disabled)
-    default: throw UsageError(description: "open-at-login takes on, off or nothing")
+    case []: return nil
+    case ["on"]: return .enabled
+    case ["off"]: return .disabled
+    default: throw UsageError(description: "\(name) takes on, off or nothing")
     }
   }
 

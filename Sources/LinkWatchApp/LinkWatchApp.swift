@@ -41,6 +41,7 @@ private func latencyText(_ value: Double?) -> String {
 private struct DetailView: View {
   @Bindable var monitor: MonitorController
   @StateObject private var options = DetailOptions()
+  @AppStorage("simplePanel") private var simple = false
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
@@ -66,92 +67,14 @@ private struct DetailView: View {
           NSApp.activate(ignoringOtherApps: true)
         }
       }
-      HStack {
-        if !monitor.onRouterRadio {
-          metric("Access point", value: monitor.accessPointLatency)
-          Spacer()
-        }
-        metric(monitor.onRouterRadio ? "Router Wi-Fi" : "Router", value: monitor.routerLatency)
-        if monitor.session.profile?.internetReferences == true {
-          Spacer()
-          metric("Internet", value: monitor.session.window.internetMedian)
-        }
-      }
-      if !monitor.onRouterRadio, let accessPoint = monitor.accessPointLatency,
-        let router = monitor.routerLatency
-      {
-        Text(String(format: "Router − AP: %+.1f ms", router - accessPoint)).monospacedDigit()
-      }
-      if let signal = monitor.signal {
-        Text("Wi-Fi signal: \(signal.summary)").monospacedDigit().font(.caption)
-      }
-      if let usage = monitor.usage {
-        Text(
-          "Usage: ↓ \(StatusReport.rate(usage.downloadBitsPerSecond)) · ↑ \(StatusReport.rate(usage.uploadBitsPerSecond))"
-        )
-        .monospacedDigit().font(.caption)
-      }
-      if monitor.session.profile != nil {
-        let totals = monitor.usageTotals
-        Text("Today \(totals.today.summary)   ·   7 days \(totals.week.summary)")
-          .monospacedDigit().font(.caption)
-          .help("Data this Mac moved on monitored networks while LinkWatch was running.")
-      }
-      if let profile = monitor.session.profile {
-        Text(profile.ssid).font(.headline)
-        Text("AP \(profile.accessPointText) · Router \(profile.router)").font(.caption)
-        Text("Associated BSSID: \(monitor.network?.bssid ?? "Unavailable")").font(.caption)
-        Text(
-          monitor.onRouterRadio
-            ? "Connected to the router's own Wi-Fi here, so the access point is not in the path."
-            : "Connected through the access point \(monitor.servingAccessPoint(for: profile) ?? "")."
-        )
-        .font(.caption).foregroundStyle(.secondary)
-        Text(
-          String(
-            format: "Packet loss, last 2 min — AP %.0f%% · Router %.0f%%",
-            monitor.session.window.accessPointLoss * 100,
-            monitor.session.window.routerLoss * 100))
-        Picker("History", selection: $options.range) {
-          ForEach(ChartRange.allCases) { Text($0.rawValue).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        if options.range == .hour {
-          let hourAgo = Date().addingTimeInterval(-3600)
-          HistoryChart(
-            history: monitor.session.window.history,
-            stored: monitor.week.minutes.filter {
-              $0.start >= hourAgo && $0.ssid == monitor.session.profile?.ssid
-            })
-        } else {
-          let cutoff = Date().addingTimeInterval(-options.range.seconds)
-          WeekChart(minutes: monitor.week.minutes.filter { $0.start >= cutoff })
-        }
-        if monitor.session.window.health != .healthy {
-          TimelineView(.periodic(from: .now, by: 1)) { _ in
-            let seconds = Int(ProcessInfo.processInfo.systemUptime - monitor.healthSince)
-            Text("Current alert for \(seconds) seconds").font(.caption)
-          }
-        } else if let since = monitor.session.window.pendingSince,
-          let latest = monitor.session.window.samples.last
-        {
-          Text("Evaluating degradation: \(Int(latest.elapsed - since)) seconds").font(.caption)
-        }
-      }
-      RecentProblems(monitor: monitor)
-      HStack {
-        TextField("What just happened? e.g. desk moved", text: $options.markText)
-          .textFieldStyle(.roundedBorder).font(.caption)
-          .onSubmit(markMoment)
-        Button("Mark", action: markMoment).disabled(AppEvent.markLabel(options.markText) == nil)
-      }
-      .help("Notes what you are doing now, so problems can be matched with it later.")
-      if let message = options.markMessage {
-        Text(message).font(.caption2).foregroundStyle(.secondary)
-      }
-      DeviceTestView(monitor: monitor, device: $options.testDevice)
+      if !simple || options.showDetails { details }
       RestartView(monitor: monitor)
+      if simple {
+        Button(options.showDetails ? "Hide details" : "Show details") {
+          options.showDetails.toggle()
+        }
+        .buttonStyle(.link).font(.caption)
+      }
       Divider()
       Toggle("Pause monitoring", isOn: $monitor.paused)
       HStack {
@@ -180,6 +103,95 @@ private struct DetailView: View {
     }
     .padding(18)
     .frame(width: 360)
+  }
+
+  /// Measurements, history and diagnosis tools; one click away in the simple panel.
+  @ViewBuilder private var details: some View {
+    HStack {
+      if !monitor.onRouterRadio {
+        metric("Access point", value: monitor.accessPointLatency)
+        Spacer()
+      }
+      metric(monitor.onRouterRadio ? "Router Wi-Fi" : "Router", value: monitor.routerLatency)
+      if monitor.session.profile?.internetReferences == true {
+        Spacer()
+        metric("Internet", value: monitor.session.window.internetMedian)
+      }
+    }
+    if !monitor.onRouterRadio, let accessPoint = monitor.accessPointLatency,
+      let router = monitor.routerLatency
+    {
+      Text(String(format: "Router − AP: %+.1f ms", router - accessPoint)).monospacedDigit()
+    }
+    if let signal = monitor.signal {
+      Text("Wi-Fi signal: \(signal.summary)").monospacedDigit().font(.caption)
+    }
+    if let usage = monitor.usage {
+      Text(
+        "Usage: ↓ \(StatusReport.rate(usage.downloadBitsPerSecond)) · ↑ \(StatusReport.rate(usage.uploadBitsPerSecond))"
+      )
+      .monospacedDigit().font(.caption)
+    }
+    if monitor.session.profile != nil {
+      let totals = monitor.usageTotals
+      Text("Today \(totals.today.summary)   ·   7 days \(totals.week.summary)")
+        .monospacedDigit().font(.caption)
+        .help("Data this Mac moved on monitored networks while LinkWatch was running.")
+    }
+    if let profile = monitor.session.profile {
+      Text(profile.ssid).font(.headline)
+      Text("AP \(profile.accessPointText) · Router \(profile.router)").font(.caption)
+      Text("Associated BSSID: \(monitor.network?.bssid ?? "Unavailable")").font(.caption)
+      Text(
+        monitor.onRouterRadio
+          ? "Connected to the router's own Wi-Fi here, so the access point is not in the path."
+          : "Connected through the access point \(monitor.servingAccessPoint(for: profile) ?? "")."
+      )
+      .font(.caption).foregroundStyle(.secondary)
+      Text(
+        String(
+          format: "Packet loss, last 2 min — AP %.0f%% · Router %.0f%%",
+          monitor.session.window.accessPointLoss * 100,
+          monitor.session.window.routerLoss * 100))
+      Picker("History", selection: $options.range) {
+        ForEach(ChartRange.allCases) { Text($0.rawValue).tag($0) }
+      }
+      .pickerStyle(.segmented)
+      .labelsHidden()
+      if options.range == .hour {
+        let hourAgo = Date().addingTimeInterval(-3600)
+        HistoryChart(
+          history: monitor.session.window.history,
+          stored: monitor.week.minutes.filter {
+            $0.start >= hourAgo && $0.ssid == monitor.session.profile?.ssid
+          })
+      } else {
+        let cutoff = Date().addingTimeInterval(-options.range.seconds)
+        WeekChart(minutes: monitor.week.minutes.filter { $0.start >= cutoff })
+      }
+      if monitor.session.window.health != .healthy {
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+          let seconds = Int(ProcessInfo.processInfo.systemUptime - monitor.healthSince)
+          Text("Current alert for \(seconds) seconds").font(.caption)
+        }
+      } else if let since = monitor.session.window.pendingSince,
+        let latest = monitor.session.window.samples.last
+      {
+        Text("Evaluating degradation: \(Int(latest.elapsed - since)) seconds").font(.caption)
+      }
+    }
+    RecentProblems(monitor: monitor)
+    HStack {
+      TextField("What just happened? e.g. desk moved", text: $options.markText)
+        .textFieldStyle(.roundedBorder).font(.caption)
+        .onSubmit(markMoment)
+      Button("Mark", action: markMoment).disabled(AppEvent.markLabel(options.markText) == nil)
+    }
+    .help("Notes what you are doing now, so problems can be matched with it later.")
+    if let message = options.markMessage {
+      Text(message).font(.caption2).foregroundStyle(.secondary)
+    }
+    DeviceTestView(monitor: monitor, device: $options.testDevice)
   }
 
   private func markMoment() {
@@ -301,6 +313,7 @@ private struct ProfileSettings: View {
       .disabled(!editor.draft.isValid)
       if !editor.message.isEmpty { Text(editor.message) }
       if let error = monitor.storageError { Text(error).foregroundStyle(.red) }
+      PanelSettings()
       Section("Start") {
         Toggle("Open LinkWatch at login", isOn: $editor.opensAtLogin)
           .onChange(of: editor.opensAtLogin) { _, enabled in

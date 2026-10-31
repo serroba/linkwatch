@@ -22,6 +22,7 @@ extension Headless {
     case .setProfile(let update): return await setProfile(update)
     case .removeProfile(let ssid): return await removeProfile(ssid)
     case .openAtLogin(let setting): return openAtLogin(setting)
+    case .notifications(let setting): return await notifications(setting)
     case .mark(let label): return await mark(label)
     case .testDevice(let device): return await testDevice(device)
     case .restarted(let device, let wait): return await restarted(device, wait: wait)
@@ -292,6 +293,20 @@ extension Headless {
   private static func currentStatus(live: StatusReport?) async -> StatusReport {
     if let live { return live }
     return StatusReport(controller: await readyMonitor().controller, now: uptime)
+  }
+
+  static func notifications(_ setting: ProfileUpdate.Switch?) async -> Int32 {
+    if let setting {
+      let enabled = await ProblemNotifier.set(setting == .enabled)
+      if setting == .enabled, !enabled {
+        write(
+          "LinkWatch: notifications are not allowed; allow LinkWatch in System Settings › Notifications.\n",
+          to: .standardError)
+        return 1
+      }
+    }
+    write("Notifications: \(ProblemNotifier.description)\n")
+    return 0
   }
 
   static func openAtLogin(_ setting: ProfileUpdate.Switch?) -> Int32 {
