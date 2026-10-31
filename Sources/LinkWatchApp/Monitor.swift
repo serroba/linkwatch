@@ -208,7 +208,19 @@ final class Monitor: NSObject, ObservableObject, CLLocationManagerDelegate {
     switch session.window.health {
     case .healthy: return .green
     case .bothSlow: return .orange
-    case .routerSlower, .unreachable: return .red
+    case .routerSlower: return .red
+    case .unreachable: return .purple
+    }
+  }
+
+  var symbol: String {
+    guard session.profile != nil, !session.window.samples.isEmpty else {
+      return "pause.circle.fill"
+    }
+    switch session.window.health {
+    case .healthy: return "checkmark.circle.fill"
+    case .bothSlow, .routerSlower: return "exclamationmark.triangle.fill"
+    case .unreachable: return "xmark.octagon.fill"
     }
   }
 

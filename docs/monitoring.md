@@ -1,10 +1,11 @@
 # Monitoring semantics
 
 Each cycle records a pair of outcomes against monotonic elapsed time. Cancelled
-pairs and non-increasing timestamps are discarded. History holds 60 pairs; each
-display median uses successful outcomes within the last five pairs. A failed
+pairs and non-increasing timestamps are discarded. Statistics use the last 60
+pairs; each display median uses successful outcomes within the last five pairs.
+A separate display history keeps 450 pairs, about 15 minutes, in memory only. A failed
 latest probe must be displayed as unavailable even if older successes exist.
-Loss is the proportion of failed outcomes in the bounded history.
+Loss is the proportion of failed outcomes in the 60-pair statistics window.
 
 Degradation starts when the median difference strictly exceeds 20 ms, or both
 medians strictly exceed 30 ms. The condition must remain present at each sample

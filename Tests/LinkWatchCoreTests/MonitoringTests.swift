@@ -70,3 +70,14 @@ private func pair(_ elapsed: Double, ap: Double = 1, router: Double = 2) -> Prob
   }
   #expect(window.health == .bothSlow)
 }
+
+@Test func displayHistoryOutlivesStatisticsWindow() {
+  var window = MonitoringWindow(capacity: 5, historyCapacity: 8)
+  for index in 0..<20 { window.append(pair(Double(index))) }
+  #expect(window.samples.count == 5)
+  #expect(window.history.count == 8)
+  #expect(window.history.first?.elapsed == 12)
+  window.append(ProbePair(elapsed: 21, accessPoint: .cancelled, router: .timeout))
+  #expect(window.history.count == 8)
+  #expect(MonitoringWindow(capacity: 60, historyCapacity: 10).historyCapacity == 60)
+}
