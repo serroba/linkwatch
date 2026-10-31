@@ -62,7 +62,7 @@ jobs:
         run: >-
           python3 scripts/check_coverage.py "$(swift test --show-codecov-path)"
           --gate Sources/LinkWatchCore=90 --file-floor Sources/LinkWatchCore=85
-          --report Sources/LinkWatchNetworking --report Sources/LinkWatchApp
+          --gate Sources/LinkWatchNetworking=85 --report Sources/LinkWatchApp
       - name: Run tests with thread sanitizer
         env:
           LINKWATCH_TEST_LOOPBACK: '1'
