@@ -17,29 +17,34 @@ struct FindAccessPointRow: View {
           Button("Use it") { accessPoint = address }
         }
       case .router:
-        Text("This Mac is on the router's own Wi-Fi here, so there is no access point to find.")
-          .font(.caption).foregroundStyle(.secondary)
+        searchRow(
+          "This Mac is on the router's own Wi-Fi here, so there is no access point to find.")
       case .unknown:
-        HStack(alignment: .firstTextBaseline) {
-          Text(prompt(discovery)).font(.caption).fixedSize(horizontal: false, vertical: true)
-          Spacer()
-          Button(isSearching ? "Searching…" : "Find access point") { find() }
-            .disabled(isSearching)
-            .help(
-              "Pings each address on this private network once so the Mac learns the access point's address."
-            )
-        }
-      default:
-        EmptyView()
+        searchRow(
+          discovery.behindAccessPoint
+            ? "This Mac is connected through an access point whose address is not known yet."
+            : "LinkWatch cannot tell yet whether this Mac is connected through an access point.")
+      case .found:
+        searchRow("This Mac is connected through the access point in this profile.")
       }
     }
   }
 
-  private func prompt(_ discovery: NetworkDiscovery) -> String {
+  private func searchRow(_ prompt: String) -> some View {
+    HStack(alignment: .firstTextBaseline) {
+      Text(searchMessage ?? prompt).font(.caption).fixedSize(horizontal: false, vertical: true)
+      Spacer()
+      Button(isSearching ? "Searching…" : "Find access point") { find() }
+        .disabled(isSearching)
+        .help(
+          "Pings each address on this private network once so the Mac learns the access point's address."
+        )
+    }
+  }
+
+  private var searchMessage: String? {
     if case .finished(let message) = monitor.accessPointSearch { return message }
-    return discovery.behindAccessPoint
-      ? "This Mac is connected through an access point whose address is not known yet."
-      : "LinkWatch cannot tell yet whether this Mac is connected through an access point."
+    return nil
   }
 
   private var isSearching: Bool {

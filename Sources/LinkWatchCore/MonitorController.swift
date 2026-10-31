@@ -132,8 +132,9 @@ public final class MonitorController {
   @ObservationIgnored var lastTraffic: TrafficReading?
   /// Counts probe cycles, to space out internet references on metered connections.
   @ObservationIgnored var cycles = 0
-  /// When discovery last ran, so the connected device is rechecked every minute.
+  /// When discovery last ran (every minute) and which radio the subnet was last searched from.
   @ObservationIgnored var discoveredAt: TimeInterval = -.infinity
+  @ObservationIgnored var searchedFrom: (bssid: String, at: TimeInterval)?
   /// Rates from the last five cycles and the highest seen in this session.
   @ObservationIgnored var recentRates: [Double] = []
   @ObservationIgnored var sessionPeakRate: Double = 0

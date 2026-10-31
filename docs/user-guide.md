@@ -111,14 +111,17 @@ LinkWatch only watches networks you approve.
    **Moving around the house.** Many homes have the router's own Wi-Fi in one room and
    an access point (for example behind powerline adapters) in another, with the same
    network name. LinkWatch keeps pinging both from anywhere and works out which one the
-   Mac is connected through; the panel says so, and **Detect again** rechecks it.
+   Mac is connected through; the panel says so, and **Search again** looks for the
+   access point on the network and rechecks it.
    Behind the access point, advice about the powerline adapters applies to this Mac.
    On the router's Wi-Fi, a slow access point only shows as a note ("only devices
    using the access point are affected"), because this Mac does not use it there. If
    you first set up the network on the router's Wi-Fi, the panel says **Connected
-   through an access point LinkWatch does not know yet** when you join the access point;
-   click **Find it** once and the access point is saved with the network. Or type its
-   address into Settings.
+   through an access point LinkWatch does not know yet** when you join the access point.
+   LinkWatch then searches for it by itself (at most every half hour), or click
+   **Find it** to search now; once found, the access point is saved with the network.
+   If the search cannot find it, the panel says how many devices answered; type the
+   access point's address into Settings instead.
 4. Optionally, in Settings, name what connects the access point to the router, for
    example *"TP-Link powerline adapters"*. The advice then uses that name.
 

@@ -75,6 +75,9 @@ final class Monitor: ObservableObject {
       while let controller {
         controller.refresh()
         notifier.update(controller)
+        if controller.accessPointSearchIsDue {
+          Task { await controller.searchForAccessPoint() }
+        }
         try? await Task.sleep(for: .milliseconds(500))
       }
     }

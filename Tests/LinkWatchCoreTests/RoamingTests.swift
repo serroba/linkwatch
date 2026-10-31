@@ -236,3 +236,46 @@ private let routerOnly = [
   #expect(harness.controller.connectionPath == .router)
   #expect(!harness.controller.behindUnknownAccessPoint)
 }
+
+@Test func radiosFurtherFromTheWiredAddressStillMatchWhenUnambiguous() {
+  let farRadio = NetworkIdentity(ssid: "Home", bssid: "00:00:5e:00:53:5f", interface: "en0")
+  let discovery = NetworkDiscovery(network: farRadio, router: "192.0.2.1", neighbors: house)
+  #expect(discovery.accessPoint == .found("192.0.2.2"))
+  let twin = NeighborEntry(
+    address: "192.0.2.3", hardwareAddress: "00:00:5e:00:53:70", interface: "en0")
+  let ambiguous = NetworkDiscovery(
+    network: farRadio, router: "192.0.2.1", neighbors: house + [twin])
+  #expect(ambiguous.accessPoint == .unknown)
+}
+
+@MainActor
+@Test func anUnknownAccessPointIsSearchedForOncePerRadioAndHalfHour() async {
+  let noAccessPoint = NetworkProfile(
+    ssid: "Home", accessPoint: "", router: "192.0.2.1", internetReferences: false)
+  let harness = Harness(profiles: [noAccessPoint])
+  harness.environment.router = "192.0.2.1"
+  harness.environment.neighborEntries = routerOnly
+  harness.environment.network = routerRadio
+  harness.controller.networkChanged()
+  #expect(!harness.controller.accessPointSearchIsDue)
+
+  harness.environment.network = accessPointRadio
+  harness.controller.refresh()
+  #expect(harness.controller.accessPointSearchIsDue)
+  harness.script.outcomes = ["192.168.7.2": .timeout]
+  await harness.controller.searchForAccessPoint()
+  #expect(!harness.controller.accessPointSearchIsDue)
+  #expect(
+    harness.controller.accessPointSearch
+      == .finished(
+        "No device among 253 addresses (252 answered) matches the AP's radio 00:00:5e:00:53:41. Enter its address in Settings."
+      ))
+  harness.clock.now += MonitorController.automaticSearchInterval
+  #expect(harness.controller.accessPointSearchIsDue)
+
+  // The sweep fills the ARP cache; the AP is saved and nothing more is searched.
+  harness.script.beforeReply = { harness.environment.neighborEntries = house }
+  await harness.controller.searchForAccessPoint()
+  #expect(harness.controller.profiles.first?.accessPoint == "192.0.2.2")
+  #expect(!harness.controller.accessPointSearchIsDue)
+}

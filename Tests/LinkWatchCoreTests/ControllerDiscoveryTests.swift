@@ -200,7 +200,9 @@ import Testing
   #expect(harness.script.requests == ["192.168.7.22@en0"])
   #expect(
     harness.controller.accessPointSearch
-      == .finished("No device among 1 address matches the AP. Enter its address in Settings."))
+      == .finished(
+        "No device among 1 address (1 answered) matches the AP's radio 00:00:5e:00:53:01. Enter its address in Settings."
+      ))
 }
 
 @MainActor
