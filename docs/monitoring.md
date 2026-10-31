@@ -121,6 +121,21 @@ opposite case. Any improvement with nothing worse reads as *helped*, anything wo
 as *worse*, and otherwise *no clear difference*. The panel and `status` show the
 latest restart for an hour; `diagnose` lists every restart in the period.
 
+## Weekly summary
+
+`summary` (and the top of exported reports) groups the period's incidents by the part
+of the connection they point to: Wi-Fi (`accessPoint`, `weakSignal`,
+`accessPointSpikes`), the bridge (`bridge`, `bridgeSpikes`, `routerUnreachable`), the
+internet (`internet`, `internetSpikes`), the Mac being busy, and the router not
+answering. Each area lists incidents, problem minutes and the longest incident. The
+busiest hours are the three hours of the day with the most incident minutes across
+all days. Latency under load compares the median of minute medians (internet when
+probed, otherwise the router) in minutes moving at least 30 MB, about 4 Mbit/s, with
+all other minutes. Advice names an area when it holds at least half the problem
+minutes over three or more incidents; reports bufferbloat when at least ten heavy
+minutes add 50 ms or more; reports a time-of-day cluster when one hour holds at least
+30% of 20 or more problem minutes; and counts how often judged restarts helped.
+
 ## Device tests
 
 A guided test has three 30-second phases: as usual, device on, device off. Each

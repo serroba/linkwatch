@@ -16,6 +16,8 @@ enum Reports {
     let minutes: [MinuteSummary]
     let bridgeNames: [String: String]
     let hotspots: Set<String>
+    /// The period's overview, used at the top of exported reports.
+    let summary: WeeklySummary
   }
 
   static func diagnosis(status: StatusReport, appRunning: Bool, hours: Int) -> Diagnosis {
@@ -36,7 +38,10 @@ enum Reports {
     ) { first, _ in first }
     return Diagnosis(
       report: report, minutes: minutes, bridgeNames: bridgeNames,
-      hotspots: Set(profiles.filter(\.hotspot).map(\.ssid)))
+      hotspots: Set(profiles.filter(\.hotspot).map(\.ssid)),
+      summary: WeeklySummary(
+        minutes: minutes, profiles: profiles, events: report.events,
+        days: max(1, hours / 24), now: now))
   }
 
   static func export(
@@ -45,7 +50,8 @@ enum Reports {
     let diagnosis = diagnosis(status: status, appRunning: appRunning, hours: days * 24)
     return try ExportedReport(
       report: diagnosis.report, minutes: diagnosis.minutes,
-      bridgeNames: diagnosis.bridgeNames, hotspots: diagnosis.hotspots, redact: redact
+      bridgeNames: diagnosis.bridgeNames, hotspots: diagnosis.hotspots,
+      summary: diagnosis.summary, redact: redact
     ).write(into: directory)
   }
 

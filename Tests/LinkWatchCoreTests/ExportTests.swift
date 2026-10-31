@@ -20,9 +20,11 @@ private func exported(ssid: String, redact: Bool) async -> ExportedReport {
   let report = DiagnoseReport(
     status: status, appRunning: true, minutes: harness.history.saved, profiles: [profile],
     hours: 1, now: now, primaryInterface: "en0", appVersion: "0.3.0")
+  let summary = WeeklySummary(
+    minutes: harness.history.saved, profiles: [profile], events: [], days: 1, now: now)
   return ExportedReport(
     report: report, minutes: harness.history.saved, bridgeNames: [ssid: "TP-Link"],
-    redact: redact)
+    summary: summary, redact: redact)
 }
 
 private func text(_ report: ExportedReport, _ name: String) -> String {
@@ -32,12 +34,14 @@ private func text(_ report: ExportedReport, _ name: String) -> String {
 @MainActor
 @Test func exportContainsReadableAndMachineReports() async throws {
   let report = await exported(ssid: "Home", redact: false)
-  #expect(Set(report.files.keys) == ["report.txt", "report.json", "minutes.json"])
+  #expect(
+    Set(report.files.keys) == ["report.txt", "report.json", "summary.json", "minutes.json"])
   #expect(report.folderName.hasPrefix("LinkWatch report "))
   #expect(!report.folderName.contains(":"))
   let readable = text(report, "report.txt")
   #expect(readable.hasPrefix("This report contains the network name and local addresses."))
   #expect(readable.contains("LinkWatch 0.3.0 diagnosis"))
+  #expect(readable.contains("\n\nSummary of the last 1 day\n"))
   #expect(readable.contains("192.0.2.2"))
   let decoder = JSONDecoder()
   decoder.dateDecodingStrategy = .iso8601

@@ -128,7 +128,9 @@ restarting your equipment will not help.
 **It was not working last night. Can I see what happened?** Yes. The panel lists the
 last day's problems, and the chart's **7 d** view shows the week. To let someone else
 look, click **Export report…** at the bottom of the panel: LinkWatch saves the last
-week's diagnosis and measurements in a folder and shows it in Finder. Send that
+week's summary, diagnosis and measurements in a folder and shows it in Finder. The
+summary at the top says which part of the connection caused most trouble, at what
+time of day, and what to change, such as replacing powerline adapters with a cable. Send that
 folder by AirDrop or Messages. It contains your network name and local addresses, so
 send it only to people you trust.
 

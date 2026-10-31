@@ -15,6 +15,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case removeProfile(ssid: String)
   case history(hours: Int, json: Bool)
   case incidents(days: Int, json: Bool)
+  case summary(days: Int, json: Bool)
   case diagnose(hours: Int, json: Bool)
   case clearHistory
   case openAtLogin(ProfileUpdate.Switch?)
@@ -85,9 +86,12 @@ public enum HeadlessCommand: Equatable, Sendable {
       profile remove NAME    Delete a profile; its network is no longer probed.
       history clear          Delete the stored week of history, as in Settings.
       export [--days N] [--dir PATH] [--redact]
-                             Write a shareable report folder (report.txt, report.json and
-                             minutes.json) for the last N days (default 7) and print its path.
+                             Write a shareable report folder (report.txt, report.json,
+                             summary.json and minutes.json) for the last N days (default 7) and print its path.
                              --redact replaces network names and local addresses.
+      summary [--days N]     The week at a glance (default 7 days): which part of the
+                             connection caused problems, when, latency under heavy use,
+                             restarts, and what to change.
       incidents [--days N]   List problems in the last N days (default 7): when, how long,
                              the most likely cause and the evidence for each link.
       open-at-login [on|off] Show or change whether LinkWatch starts at login, so monitoring
@@ -132,6 +136,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "profile": try profile(options, json: json)
     case "history": try history(options, json: json)
     case "incidents": try incidents(options, json: json)
+    case "summary": try summary(options, json: json)
     case "diagnose": try diagnose(options, json: json)
     case "events": try events(options, json: json)
     default: try withOperands(name, options)

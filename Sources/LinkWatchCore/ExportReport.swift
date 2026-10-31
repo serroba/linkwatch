@@ -9,7 +9,7 @@ public struct ExportedReport: Equatable, Sendable {
 
   public init(
     report: DiagnoseReport, minutes: [MinuteSummary], bridgeNames: [String: String],
-    hotspots: Set<String> = [], redact: Bool
+    hotspots: Set<String> = [], summary: WeeklySummary? = nil, redact: Bool
   ) {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -20,18 +20,26 @@ public struct ExportedReport: Equatable, Sendable {
       redact
       ? "Network names, local addresses and hardware addresses are replaced with placeholders."
       : "This report contains the network name and local addresses. Share it only with people you trust."
-    let text = header + "\n\n" + report.text(bridgeNames: bridgeNames, hotspots: hotspots)
+    let overview = summary.map { $0.text(bridgeNames: bridgeNames, hotspots: hotspots) + "\n" }
+    let text =
+      header + "\n\n" + (overview ?? "")
+      + report.text(bridgeNames: bridgeNames, hotspots: hotspots)
     let encoder = JSONEncoder()
     encoder.dateEncodingStrategy = .iso8601
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
     let reportJSON = (try? encoder.encode(report)) ?? Data()
     let minutesJSON = (try? encoder.encode(minutes)) ?? Data()
+    let summaryJSON = summary.flatMap { try? encoder.encode($0) }
     func clean(_ text: String) -> Data { Data((redactor?.apply(text) ?? text).utf8) }
-    files = [
+    var files = [
       "report.txt": clean(text),
       "report.json": clean(String(bytes: reportJSON, encoding: .utf8) ?? ""),
       "minutes.json": clean(String(bytes: minutesJSON, encoding: .utf8) ?? ""),
     ]
+    if let summaryJSON {
+      files["summary.json"] = clean(String(bytes: summaryJSON, encoding: .utf8) ?? "")
+    }
+    self.files = files
   }
 
   /// Writes the folder into a directory and returns its location.

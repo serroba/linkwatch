@@ -49,6 +49,9 @@ happened and which link failed, on the Mac where it happened.
   internet reference pings run every 10 seconds to save mobile data.
 - **"I restarted…"**: records a restart and, a few minutes later, says whether it
   helped, for example "router 85 → 4 ms", in the panel, `status` and `diagnose`.
+- **Weekly summary** (`summary`, and the top of exported reports): problems per part
+  of the connection, busiest hours, latency under heavy use, restarts, and advice on
+  what to move or replace.
 
 ## Next
 
@@ -57,9 +60,7 @@ happened and which link failed, on the Mac where it happened.
 2. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes
    (asks for Notifications permission).
-3. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
-   latency under load, to decide whether to move or replace equipment.
-4. **App icon.**
+3. **App icon.**
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.

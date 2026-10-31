@@ -38,6 +38,7 @@ extension Headless {
     case .export(let days, let directory, let redact):
       return await export(days: days, directory: directory, redact: redact)
     case .incidents(let days, let json): return incidents(days: days, json: json)
+    case .summary(let days, let json): return await summary(days: days, json: json)
     case .diagnose(let hours, let json): return await diagnose(hours: hours, json: json)
     default:
       write("LinkWatch: unsupported command\n", to: .standardError)
@@ -206,6 +207,20 @@ extension Headless {
     }
     let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
     write(HistoryRollup.table(HistoryRollup.hours(minutes, profiles: profiles)))
+    return 0
+  }
+
+  /// The period at a glance, the same overview that opens exported reports.
+  static func summary(days: Int, json: Bool) async -> Int32 {
+    let live = await AppControl.liveStatus()
+    let status = await currentStatus(live: live)
+    let diagnosis = Reports.diagnosis(status: status, appRunning: live != nil, hours: days * 24)
+    if json {
+      emit(encodable: diagnosis.summary, compact: false)
+    } else {
+      write(
+        diagnosis.summary.text(bridgeNames: diagnosis.bridgeNames, hotspots: diagnosis.hotspots))
+    }
     return 0
   }
 

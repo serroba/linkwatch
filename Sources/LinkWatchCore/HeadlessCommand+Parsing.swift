@@ -120,4 +120,12 @@ extension HeadlessCommand {
     try requireEmpty(options)
     return .incidents(days: days, json: json)
   }
+
+  static func summary(_ arguments: [String], json: Bool) throws(UsageError) -> HeadlessCommand {
+    var options = arguments
+    let days = try take(count: "--days", from: &options) ?? 7
+    guard days <= 7 else { throw UsageError(description: "--days must be at most 7") }
+    try requireEmpty(options)
+    return .summary(days: days, json: json)
+  }
 }
