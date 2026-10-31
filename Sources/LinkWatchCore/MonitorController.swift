@@ -6,11 +6,15 @@ public protocol LatencyProbe: Sendable {
   func measure(address: String, interface: String) async -> ProbeOutcome
 }
 
-/// Reports permission and the identity of the current Wi-Fi network.
+/// Reports permission, the current Wi-Fi network and passive routing facts.
 @MainActor
 public protocol NetworkEnvironment: AnyObject {
   var isPermitted: Bool { get }
   func currentNetwork() -> NetworkIdentity?
+  /// The IPv4 router, only when this interface owns the default route.
+  func defaultRouter(for interface: String) -> String?
+  /// Existing ARP cache entries; implementations must not send traffic to populate it.
+  func neighbors() -> [NeighborEntry]
 }
 
 /// Persists approved network profiles on this Mac.
@@ -18,6 +22,14 @@ public protocol ProfileStore {
   /// Returns nil when nothing has been saved yet.
   func load() throws -> [NetworkProfile]?
   func save(_ profiles: [NetworkProfile]) throws
+}
+
+/// A setup change offered to the user; nothing is probed or saved until it is accepted.
+public enum NetworkSuggestion: Equatable, Sendable {
+  /// The current Wi-Fi network has no profile.
+  case monitor(NetworkDiscovery)
+  /// Discovered addresses differ from the saved profile.
+  case update(current: NetworkProfile, proposed: NetworkProfile)
 }
 
 /// The overall state shown in the menu bar.
@@ -43,12 +55,16 @@ public final class MonitorController {
     didSet { refresh() }
   }
   public private(set) var sleeping = false
+  public private(set) var discovery: NetworkDiscovery?
+  public private(set) var suggestion: NetworkSuggestion?
 
   @ObservationIgnored private let environment: any NetworkEnvironment
   @ObservationIgnored private let probe: any LatencyProbe
   @ObservationIgnored private let store: any ProfileStore
   @ObservationIgnored private let uptime: @MainActor () -> TimeInterval
   @ObservationIgnored private var inFlight: Task<ProbePair, Never>?
+  @ObservationIgnored private var dismissed: Set<String> = []
+  @ObservationIgnored private var needsDiscovery = true
 
   public static let interval: TimeInterval = 2
 
@@ -116,11 +132,33 @@ public final class MonitorController {
   /// Discards in-flight and recorded measurements after a network change.
   public func networkChanged() {
     invalidate()
+    needsDiscovery = true
     refresh()
+  }
+
+  /// Saves the suggested profile when it has both a router and a separate AP.
+  @discardableResult
+  public func acceptSuggestion() -> Bool {
+    switch suggestion {
+    case .monitor(let discovery):
+      guard let profile = discovery.proposedProfile else { return false }
+      return save(profile)
+    case .update(_, let proposed):
+      return save(proposed)
+    case nil:
+      return false
+    }
+  }
+
+  /// Hides the current suggestion until the discovered addresses change.
+  public func dismissSuggestion() {
+    if let discovery { dismissed.insert(Self.key(discovery)) }
+    suggestion = nil
   }
 
   public func refresh() {
     network = environment.currentNetwork()
+    discover()
     if session.select(
       network: network, profiles: profiles, permitted: environment.isPermitted,
       paused: paused || sleeping)
@@ -156,6 +194,34 @@ public final class MonitorController {
       reason = currentReason()
     }
     return max(0.05, Self.interval - (uptime() - started))
+  }
+
+  private func discover() {
+    guard let network, !sleeping else {
+      discovery = nil
+      suggestion = nil
+      return
+    }
+    if needsDiscovery || discovery?.network != network {
+      needsDiscovery = false
+      discovery = NetworkDiscovery(
+        network: network, router: environment.defaultRouter(for: network.interface),
+        neighbors: environment.neighbors())
+    }
+    suggestion = currentSuggestion()
+  }
+
+  private func currentSuggestion() -> NetworkSuggestion? {
+    guard let discovery, !dismissed.contains(Self.key(discovery)) else { return nil }
+    let matches = profiles.filter { $0.ssid == discovery.network.ssid }
+    guard let profile = matches.first else { return .monitor(discovery) }
+    let updated = discovery.updating(profile)
+    guard matches.count == 1, updated != profile, updated.isValid else { return nil }
+    return .update(current: profile, proposed: updated)
+  }
+
+  private static func key(_ discovery: NetworkDiscovery) -> String {
+    "\(discovery.network.ssid)|\(discovery.router ?? "")|\(discovery.accessPoint)"
   }
 
   @discardableResult

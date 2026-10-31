@@ -10,8 +10,18 @@ private let profile = NetworkProfile(ssid: "Home", accessPoint: "192.0.2.2", rou
 private final class FakeEnvironment: NetworkEnvironment {
   var isPermitted = true
   var network: NetworkIdentity? = home
+  var router: String?
+  var neighborEntries: [NeighborEntry] = []
+  var neighborReads = 0
 
   func currentNetwork() -> NetworkIdentity? { isPermitted ? network : nil }
+
+  func defaultRouter(for interface: String) -> String? { interface == "en0" ? router : nil }
+
+  func neighbors() -> [NeighborEntry] {
+    neighborReads += 1
+    return neighborEntries
+  }
 }
 
 private struct StoreFailure: Error {}
@@ -225,4 +235,94 @@ private struct Harness {
   harness.controller.remove(replacement)
   #expect(harness.controller.profiles.isEmpty)
   #expect(harness.controller.storageError == nil)
+}
+
+private let separateAccessPoint = [
+  NeighborEntry(address: "192.0.2.1", hardwareAddress: "00:00:5e:00:53:99", interface: "en0"),
+  NeighborEntry(address: "192.0.2.2", hardwareAddress: "00:00:5e:00:53:00", interface: "en0"),
+]
+
+@MainActor
+@Test func newNetworkIsSuggestedButNotProbedUntilAccepted() async {
+  let harness = Harness(profiles: nil)
+  harness.environment.router = "192.0.2.1"
+  harness.environment.neighborEntries = separateAccessPoint
+  harness.controller.networkChanged()
+  guard case .monitor(let discovery) = harness.controller.suggestion else {
+    Issue.record("Expected a suggestion to monitor the new network")
+    return
+  }
+  #expect(discovery.accessPoint == .found("192.0.2.2"))
+  _ = await harness.cycle()
+  #expect(harness.script.requests.isEmpty)
+
+  #expect(harness.controller.acceptSuggestion())
+  #expect(harness.controller.profiles.map(\.accessPoint) == ["192.0.2.2"])
+  #expect(harness.controller.suggestion == nil)
+  _ = await harness.cycle()
+  #expect(Set(harness.script.requests) == ["192.0.2.2@en0", "192.0.2.1@en0"])
+}
+
+@MainActor
+@Test func newNetworkWithoutSeparateAccessPointCannotBeAccepted() {
+  let harness = Harness(profiles: nil)
+  harness.environment.router = "192.0.2.1"
+  harness.controller.networkChanged()
+  guard case .monitor(let discovery) = harness.controller.suggestion else {
+    Issue.record("Expected a suggestion to set up the new network")
+    return
+  }
+  #expect(discovery.accessPoint == .unknown)
+  #expect(!harness.controller.acceptSuggestion())
+  #expect(harness.controller.profiles.isEmpty)
+}
+
+@MainActor
+@Test func changedRouterOffersUpdateKeepingThresholds() {
+  var thresholds = Thresholds()
+  thresholds.sustainedSeconds = 30
+  let saved = NetworkProfile(
+    ssid: "Home", accessPoint: "192.0.2.2", router: "192.0.2.1", thresholds: thresholds)
+  let harness = Harness(profiles: [saved])
+  harness.environment.router = "192.0.2.9"
+  harness.controller.networkChanged()
+  var expected = saved
+  expected.router = "192.0.2.9"
+  #expect(harness.controller.suggestion == .update(current: saved, proposed: expected))
+  #expect(harness.controller.session.profile?.router == "192.0.2.1")
+  #expect(harness.controller.acceptSuggestion())
+  #expect(harness.controller.profiles == [expected])
+  #expect(harness.controller.suggestion == nil)
+}
+
+@MainActor
+@Test func dismissedSuggestionReturnsOnlyWhenAddressesChange() {
+  let harness = Harness(profiles: nil)
+  harness.environment.router = "192.0.2.1"
+  harness.controller.networkChanged()
+  harness.controller.dismissSuggestion()
+  harness.controller.networkChanged()
+  #expect(harness.controller.suggestion == nil)
+  harness.environment.neighborEntries = separateAccessPoint
+  harness.controller.networkChanged()
+  #expect(harness.controller.suggestion != nil)
+}
+
+@MainActor
+@Test func discoveryRunsOnNetworkChangesOnly() {
+  let harness = Harness()
+  let reads = harness.environment.neighborReads
+  for _ in 0..<5 { harness.controller.refresh() }
+  #expect(harness.environment.neighborReads == reads)
+  harness.controller.networkChanged()
+  #expect(harness.environment.neighborReads == reads + 1)
+  harness.environment.network = NetworkIdentity(
+    ssid: "Home", bssid: "00:00:5e:00:53:02", interface: "en0")
+  harness.controller.refresh()
+  #expect(harness.environment.neighborReads == reads + 2)
+
+  harness.environment.isPermitted = false
+  harness.controller.networkChanged()
+  #expect(harness.controller.discovery == nil)
+  #expect(harness.controller.suggestion == nil)
 }
