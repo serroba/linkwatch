@@ -18,6 +18,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case diagnose(hours: Int, json: Bool)
   case clearHistory
   case openAtLogin(ProfileUpdate.Switch?)
+  case export(days: Int, directory: String?, redact: Bool)
   case help
 
   public struct UsageError: Error, Equatable, CustomStringConvertible {
@@ -64,6 +65,10 @@ public enum HeadlessCommand: Equatable, Sendable {
                              in advice such as "Restart the TP-Link powerline adapters".
       profile remove NAME    Delete a profile; its network is no longer probed.
       history clear          Delete the stored week of history, as in Settings.
+      export [--days N] [--dir PATH] [--redact]
+                             Write a shareable report folder (report.txt, report.json and
+                             minutes.json) for the last N days (default 7) and print its path.
+                             --redact replaces network names and local addresses.
       incidents [--days N]   List problems in the last N days (default 7): when, how long,
                              the most likely cause and the evidence for each link.
       open-at-login [on|off] Show or change whether LinkWatch starts at login, so monitoring
@@ -110,6 +115,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "incidents": try incidents(options, json: json)
     case "diagnose": try diagnose(options, json: json)
     case "open-at-login": try openAtLogin(options)
+    case "export": try export(options)
     default: nil
     }
   }
@@ -181,6 +187,16 @@ public enum HeadlessCommand: Equatable, Sendable {
     guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
     try requireEmpty(options)
     return .history(hours: hours, json: json)
+  }
+
+  private static func export(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
+    var options = arguments
+    let redact = take(flag: "--redact", from: &options)
+    let directory = try take(value: "--dir", from: &options)
+    let days = try take(count: "--days", from: &options) ?? 7
+    guard days <= 7 else { throw UsageError(description: "--days must be at most 7") }
+    try requireEmpty(options)
+    return .export(days: days, directory: directory, redact: redact)
   }
 
   private static func openAtLogin(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {

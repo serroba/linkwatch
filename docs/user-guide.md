@@ -78,9 +78,11 @@ the problem is at home. If the icon is orange, the provider is having trouble an
 restarting your equipment will not help.
 
 **It was not working last night. Can I see what happened?** Yes. The panel lists the
-last day's problems, and the chart's **7 d** view shows the week. Whoever looks after
-your network can also run `scripts/linkwatch incidents --days 7` or ask a coding
-agent "what's going on with my network?".
+last day's problems, and the chart's **7 d** view shows the week. To let someone else
+look, click **Export report…** at the bottom of the panel: LinkWatch saves the last
+week's diagnosis and measurements in a folder and shows it in Finder. Send that
+folder by AirDrop or Messages. It contains your network name and local addresses, so
+send it only to people you trust.
 
 **Why is it grey?** LinkWatch is paused, this network is not set up, Wi-Fi is off,
 or Location permission is missing. The panel says which.

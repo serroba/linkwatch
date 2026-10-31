@@ -33,7 +33,8 @@ The automated loopback test alone does not establish real-network correctness.
 - Versioned releases, a checksum-verifying installer, and install, update and
   removal instructions exist ([installing](install.md)). Still missing: an app icon,
   an update notice or Homebrew cask, and start at login.
-- Test the installer on a clean Mac: first-run permissions, updating while the app
-  runs, and whether permissions survive the update (they do only with a stable
-  signing identity).
+- Test the installer on a clean Mac or user account, never alongside a development
+  build (they share the bundle identifier and swap permissions): first-run
+  permissions, updating while the app runs, and whether permissions survive the
+  update (they do only with a stable signing identity).
 - Recheck privacy descriptions, accessibility and the MIT licensing of bundled code.

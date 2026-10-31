@@ -24,6 +24,8 @@ extension Headless {
     case .history(let hours, let json): return history(hours: hours, json: json)
     case .clearHistory: return clearHistory()
     case .openAtLogin(let setting): return openAtLogin(setting)
+    case .export(let days, let directory, let redact):
+      return await export(days: days, directory: directory, redact: redact)
     case .incidents(let days, let json): return incidents(days: days, json: json)
     case .diagnose(let hours, let json): return await diagnose(hours: hours, json: json)
     default:
@@ -228,31 +230,38 @@ extension Headless {
   /// "what's going on with my network?" from evidence.
   static func diagnose(hours: Int, json: Bool) async -> Int32 {
     let live = await AppControl.liveStatus()
-    let status: StatusReport
-    if let live {
-      status = live
-    } else {
-      status = StatusReport(controller: await readyMonitor().controller, now: uptime)
-    }
-    let now = Date()
-    let since = now.addingTimeInterval(-Double(hours) * 3600)
-    let minutes =
-      (try? FileHistoryStore(directory: Monitor.supportDirectory).load(since: since)) ?? []
-    let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
-    let report = DiagnoseReport(
-      status: status, appRunning: live != nil, minutes: minutes, profiles: profiles,
-      hours: hours, now: now, primaryInterface: SystemEnvironment().primaryInterface,
-      appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-      opensAtLogin: LoginItem.isEnabled)
+    let status = await currentStatus(live: live)
+    let diagnosis = Reports.diagnosis(status: status, appRunning: live != nil, hours: hours)
     if json {
-      emit(encodable: report, compact: false)
+      emit(encodable: diagnosis.report, compact: false)
     } else {
-      let bridges = Dictionary(
-        profiles.compactMap { profile in profile.bridgeName.map { (profile.ssid, $0) } }
-      ) { first, _ in first }
-      write(report.text(bridgeNames: bridges))
+      write(diagnosis.report.text(bridgeNames: diagnosis.bridgeNames))
     }
     return 0
+  }
+
+  static func export(days: Int, directory: String?, redact: Bool) async -> Int32 {
+    let live = await AppControl.liveStatus()
+    let status = await currentStatus(live: live)
+    let target = directory.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) }
+    do {
+      let folder = try Reports.export(
+        status: status, appRunning: live != nil, days: days, redact: redact,
+        into: target ?? Reports.directory)
+      write(folder.path + "\n")
+      return 0
+    } catch {
+      write(
+        "LinkWatch: the report could not be written: \(error.localizedDescription)\n",
+        to: .standardError)
+      return 1
+    }
+  }
+
+  /// The running app's live status, or a fresh local one when it is not running.
+  private static func currentStatus(live: StatusReport?) async -> StatusReport {
+    if let live { return live }
+    return StatusReport(controller: await readyMonitor().controller, now: uptime)
   }
 
   static func openAtLogin(_ setting: ProfileUpdate.Switch?) -> Int32 {

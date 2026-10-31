@@ -49,6 +49,7 @@ running app immediately.
 | `profile set --ssid NAME [options]` | Settings › save a profile (see below) |
 | `profile remove NAME` | Settings › Remove |
 | `history clear` | Settings › **Clear history…** |
+| `export [--days N] [--dir PATH] [--redact]` | **Export report…**: writes `report.txt`, `report.json` and `minutes.json` for the last N days (default 7) into a dated folder and prints its path; `--redact` replaces network names, local addresses and hardware addresses with placeholders |
 | `authorize` | **Allow Wi-Fi identification**: asks the running app to show the Location prompt |
 | `open-at-login [on\|off]` | Settings › **Open LinkWatch at login**; without an argument, shows the current state |
 

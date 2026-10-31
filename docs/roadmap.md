@@ -33,32 +33,30 @@ happened and which link failed, on the Mac where it happened.
   project skill so coding agents answer "what's going on with my network?" from the
   evidence.
 - **Releases** from version tags with a checksum-verifying installer.
+- **Export report** for sending a week of evidence from another Mac, with optional
+  redaction, which the diagnose skill reads directly.
 - **Survives restarts**: opens at login, and settings and the week of history are
   kept on disk; the hour chart fills in from stored minutes after a restart.
 
 ## Next
 
-1. **Shareable report.** An **Export report** button that writes a short text and
-   JSON summary of recent incidents and minute data, to send by AirDrop or message to
-   whoever looks after the network. It contains local addresses, so it is only
-   created on request.
-2. **Easier updates.** A Homebrew tap (`brew install --cask linkwatch`) or an in-app
+1. **Easier updates.** A Homebrew tap (`brew install --cask linkwatch`) or an in-app
    "update available" notice built on the releases.
-3. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
+2. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
    no extra traffic, to separate "move closer" from "the access point is struggling"
    in the verdict.
-4. **Simple mode.** Only the coloured icon and the sentence, with details one click
+3. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes
    (asks for Notifications permission).
-5. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
+4. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
    marks the path as expensive and the first hop is also the router; the verdicts
    switch to phone wording ("move the phone near a window", "bring the laptop
    closer"), and internet reference pings slow down to save data.
-6. **"I restarted it."** Record a restart in the history and show its effect a few
+5. **"I restarted it."** Record a restart in the history and show its effect a few
    minutes later, for example "router latency 85 → 4 ms".
-7. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
+6. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
    latency under load, to decide whether to move or replace equipment.
-8. **App icon.**
+7. **App icon.**
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.
