@@ -62,6 +62,9 @@ public struct StatusReport: Codable, Equatable, Sendable {
   public var discovery: Discovery?
   public var suggestion: Suggestion?
   public var accessPointSearch: String?
+  /// Current download and upload rates in bits per second; nil before two readings.
+  public var downloadBitsPerSecond: Double?
+  public var uploadBitsPerSecond: Double?
   public var weekMinutes: Int
   /// ISO 8601 start of the oldest stored minute.
   public var weekStart: String?
@@ -83,20 +86,7 @@ public struct StatusReport: Codable, Equatable, Sendable {
     sleeping = controller.sleeping
     network = controller.network
     profile = controller.session.profile
-    let accessPoint = controller.accessPointLatency
-    let router = controller.routerLatency
-    latency = Latency(
-      accessPoint: accessPoint, router: router,
-      routerMinusAccessPoint: accessPoint.flatMap { value in router.map { $0 - value } },
-      accessPointLoss: window.accessPointLoss, routerLoss: window.routerLoss,
-      internet: window.internetMedian, internetLoss: window.internetLoss,
-      references: window.internetLoss == nil
-        ? []
-        : InternetReference.all.enumerated().map { index, reference in
-          Reference(
-            name: reference.name, address: reference.address,
-            median: window.referenceMedian(index))
-        })
+    latency = Self.latency(controller)
     let alerting = profile != nil && !window.samples.isEmpty && window.health != .healthy
     alertSeconds = alerting ? now - controller.healthSince : nil
     evaluatingSeconds = window.pendingSince.flatMap { since in
@@ -115,11 +105,32 @@ public struct StatusReport: Codable, Equatable, Sendable {
     case .searching(let hosts): accessPointSearch = "searching \(hosts) addresses"
     case .finished(let message): accessPointSearch = message
     }
+    downloadBitsPerSecond = controller.usage?.downloadBitsPerSecond
+    uploadBitsPerSecond = controller.usage?.uploadBitsPerSecond
     weekMinutes = controller.week.minutes.count
     weekStart = controller.week.minutes.first.map { ISO8601DateFormatter().string(from: $0.start) }
     historyError = controller.historyError
     profiles = controller.profiles
     storageError = controller.storageError
+  }
+
+  @MainActor
+  private static func latency(_ controller: MonitorController) -> Latency {
+    let window = controller.session.window
+    let accessPoint = controller.accessPointLatency
+    let router = controller.routerLatency
+    return Latency(
+      accessPoint: accessPoint, router: router,
+      routerMinusAccessPoint: accessPoint.flatMap { value in router.map { $0 - value } },
+      accessPointLoss: window.accessPointLoss, routerLoss: window.routerLoss,
+      internet: window.internetMedian, internetLoss: window.internetLoss,
+      references: window.internetLoss == nil
+        ? []
+        : InternetReference.all.enumerated().map { index, reference in
+          Reference(
+            name: reference.name, address: reference.address,
+            median: window.referenceMedian(index))
+        })
   }
 
   private static func describe(_ health: Health) -> String {
@@ -185,6 +196,7 @@ extension StatusReport {
     }
     lines.append(latencyText)
     lines.append("Internet:    \(internetText)")
+    lines.append("Usage:       \(usageText)")
     lines.append(
       String(
         format: "Loss:        AP %.0f%% · Router %.0f%% over %d samples",
@@ -204,6 +216,22 @@ extension StatusReport {
     }
     if let storageError { lines.append("Storage:     \(storageError)") }
     return lines.joined(separator: "\n")
+  }
+
+  private var usageText: String {
+    guard let downloadBitsPerSecond, let uploadBitsPerSecond else {
+      return "measuring (needs two readings on this network)"
+    }
+    return "↓ \(Self.rate(downloadBitsPerSecond)) · ↑ \(Self.rate(uploadBitsPerSecond))"
+  }
+
+  /// Formats bits per second in the unit people read on speed tests.
+  public static func rate(_ bitsPerSecond: Double) -> String {
+    if bitsPerSecond >= 1_000_000 {
+      return String(format: "%.1f Mbit/s", bitsPerSecond / 1_000_000)
+    }
+    if bitsPerSecond >= 1_000 { return String(format: "%.0f kbit/s", bitsPerSecond / 1_000) }
+    return String(format: "%.0f bit/s", bitsPerSecond)
   }
 
   private var internetText: String {
@@ -269,6 +297,8 @@ extension StatusReport {
     try container.encode(discovery, forKey: .discovery)
     try container.encode(suggestion, forKey: .suggestion)
     try container.encode(accessPointSearch, forKey: .accessPointSearch)
+    try container.encode(downloadBitsPerSecond, forKey: .downloadBitsPerSecond)
+    try container.encode(uploadBitsPerSecond, forKey: .uploadBitsPerSecond)
     try container.encode(weekMinutes, forKey: .weekMinutes)
     try container.encode(weekStart, forKey: .weekStart)
     try container.encode(historyError, forKey: .historyError)

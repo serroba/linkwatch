@@ -32,6 +32,9 @@ final class FakeEnvironment: NetworkEnvironment {
   }
 
   func interfaceAddress(_ interface: String) -> InterfaceAddress? { address }
+
+  var counters: TrafficCounters?
+  func traffic(on interface: String) -> TrafficCounters? { counters }
 }
 
 struct StoreFailure: Error {}

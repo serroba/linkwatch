@@ -132,3 +132,13 @@ private struct Case {
   harness.controller.networkChanged()
   #expect(harness.controller.verdict == .allClear)
 }
+
+@MainActor
+@Test func pausingClearsTheVerdict() async {
+  let harness = Harness()
+  harness.script.outcomes["192.0.2.1"] = .success(milliseconds: 80)
+  for _ in 0..<8 { _ = await harness.cycle() }
+  #expect(harness.controller.verdict == .bridge)
+  harness.controller.paused = true
+  #expect(harness.controller.verdict == .allClear)
+}

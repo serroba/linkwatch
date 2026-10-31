@@ -115,6 +115,12 @@ private struct DetailView: View {
       if let accessPoint = monitor.accessPointLatency, let router = monitor.routerLatency {
         Text(String(format: "Router − AP: %+.1f ms", router - accessPoint)).monospacedDigit()
       }
+      if let usage = monitor.usage {
+        Text(
+          "Usage: ↓ \(StatusReport.rate(usage.downloadBitsPerSecond)) · ↑ \(StatusReport.rate(usage.uploadBitsPerSecond))"
+        )
+        .monospacedDigit().font(.caption)
+      }
       if let profile = monitor.session.profile {
         Text(profile.ssid).font(.headline)
         Text("AP \(profile.accessPoint) · Router \(profile.router)").font(.caption)

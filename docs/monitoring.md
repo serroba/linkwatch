@@ -39,20 +39,39 @@ over one stored minute (history). A target is lost when half or more of its prob
 failed. Using the profile's thresholds, the first matching rule wins:
 
 1. AP lost, or AP median above the both-slow threshold → **access point** (weak
-   Wi-Fi signal or an overloaded access point).
+   Wi-Fi signal or an overloaded access point), or **busy** when slow under load.
 2. Router lost: with internet references working → **router silent** (traffic still
    flows, so the router only ignores pings, or Local Network access is missing); with
    references also lost → **bridge**; with no references probed → **router
    unreachable**, worded conditionally because the cause cannot be told apart.
 3. Router minus AP above the difference threshold → **bridge**, the link between the
-   AP and the router, named by the profile (for example powerline adapters).
-4. Internet references lost, or slower than the router by more than 100 ms →
-   **internet** provider.
+   AP and the router, named by the profile (for example powerline adapters), or
+   **busy** when the Mac is moving a lot of data.
+4. Internet references lost → **internet** provider; slower than the router by more
+   than 100 ms → **internet**, or **busy** under load.
 5. Otherwise **all clear**.
+
+**Busy** means the faster direction of the Mac's traffic is at least 1 Mbit/s and at
+least half the busiest rate seen on that network in the stored week (or this
+session). It adapts to each connection's capacity without a speed test, and only
+explains slowness: losses still point at a link, because load alone rarely stops a
+device answering. Live, the busiest of the last five cycles is used; stored minutes
+use their average rate against the week's busiest minute.
 
 The live verdict changes only after the new verdict has held for the alert time
 (or the recovery time when clearing), and resets on any network change. Stored
 minutes are classified when read, so improved rules apply to the whole week.
+
+## Usage
+
+Each cycle reads the Wi-Fi interface's 64-bit byte counters from the kernel
+(`NET_RT_IFLIST2`; the 32-bit counters from `getifaddrs` wrap at 4 GB). The
+difference from the previous cycle gives the live download and upload rate, and
+minute summaries store bytes received and sent. Counters that go backwards, or a
+new session after a pause or network change, start a new baseline instead of
+reporting a spike. Only totals are read: no traffic is sent, and nothing about
+applications or destinations is recorded. This measures what the Mac used, not
+the connection's capacity, so it is not a speed test.
 
 ## Week history
 

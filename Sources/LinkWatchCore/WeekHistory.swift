@@ -30,6 +30,9 @@ public struct MinuteSummary: Codable, Equatable, Sendable {
   public var router: TargetSummary
   /// The best internet reference per pair; nil when the profile did not probe references.
   public var internet: TargetSummary?
+  /// Bytes the Mac received and sent on the interface during the minute; nil when unknown.
+  public var received: UInt64?
+  public var sent: UInt64?
   /// The most severe state seen during the minute: `healthy`, `bothSlow`, `routerSlower` or
   /// `unreachable`.
   public var worstHealth: String
@@ -53,15 +56,17 @@ public struct WeekHistory: Sendable {
   private var ssid = ""
   private var pairs: [ProbePair] = []
   private var worst = 0
+  private var traffic: TrafficCounters?
 
   public init(minutes: [MinuteSummary] = []) {
     self.minutes = minutes.sorted { $0.start < $1.start }
   }
 
   /// Adds a pair; returns the previous minute's summary once a new minute or network begins.
-  public mutating func record(_ pair: ProbePair, health: Health, ssid: String, at date: Date)
-    -> MinuteSummary?
-  {
+  public mutating func record(
+    _ pair: ProbePair, health: Health, ssid: String, at date: Date,
+    traffic delta: TrafficCounters? = nil
+  ) -> MinuteSummary? {
     let start = Self.minuteStart(date)
     let completed = start != minute || ssid != self.ssid ? flush() : nil
     if pairs.isEmpty {
@@ -70,6 +75,11 @@ public struct WeekHistory: Sendable {
     }
     pairs.append(pair)
     worst = max(worst, Self.severity(health))
+    if let delta {
+      traffic = TrafficCounters(
+        received: (traffic?.received ?? 0) &+ delta.received,
+        sent: (traffic?.sent ?? 0) &+ delta.sent)
+    }
     return completed
   }
 
@@ -79,6 +89,7 @@ public struct WeekHistory: Sendable {
       minute = nil
       pairs = []
       worst = 0
+      traffic = nil
     }
     guard let minute, !pairs.isEmpty else { return nil }
     let summary = MinuteSummary(
@@ -87,7 +98,7 @@ public struct WeekHistory: Sendable {
       router: TargetSummary(pairs.map(\.router)),
       internet: pairs.contains { $0.internetBest != nil }
         ? TargetSummary(pairs.compactMap(\.internetBest)) : nil,
-      worstHealth: Self.labels[worst])
+      received: traffic?.received, sent: traffic?.sent, worstHealth: Self.labels[worst])
     minutes.append(summary)
     return summary
   }

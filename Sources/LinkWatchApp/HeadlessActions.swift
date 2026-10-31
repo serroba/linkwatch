@@ -212,6 +212,9 @@ extension Headless {
 enum HistoryTable {
   static func text(_ minutes: [MinuteSummary], profiles: [NetworkProfile]) -> String {
     let thresholds = Dictionary(profiles.map { ($0.ssid, $0.thresholds) }) { first, _ in first }
+    let peaks = Dictionary(grouping: minutes, by: \.ssid).mapValues {
+      $0.compactMap(\.bitsPerSecond).max() ?? 0
+    }
     let hours = Dictionary(grouping: minutes) { minute in
       Calendar.current.dateInterval(of: .hour, for: minute.start)?.start ?? minute.start
     }
@@ -219,12 +222,14 @@ enum HistoryTable {
     formatter.dateFormat = "yyyy-MM-dd HH:00"
     var lines = [
       "Hour              Samples  AP median/p95  loss   Router median/p95  loss   "
-        + "Internet median/p95  loss   Problem minutes"
+        + "Internet median/p95  loss    ↓ MB    ↑ MB  Problem minutes"
     ]
     for (hour, group) in hours.sorted(by: { $0.key < $1.key }) {
       let samples = group.reduce(0) { $0 + $1.samples }
       let verdicts = group.map {
-        Verdict(LinkEvidence($0), thresholds: thresholds[$0.ssid] ?? Thresholds())
+        Verdict(
+          LinkEvidence($0, peakBitsPerSecond: peaks[$0.ssid] ?? 0),
+          thresholds: thresholds[$0.ssid] ?? Thresholds())
       }
       let problems = verdicts.filter(\.isProblem)
       let common = Dictionary(grouping: problems) { $0 }.max { $0.value.count < $1.value.count }
@@ -232,10 +237,16 @@ enum HistoryTable {
         formatter.string(from: hour) + "  " + pad(String(samples), 7) + "  "
           + target(group.map(\.accessPoint), samples: group.map(\.samples)) + "  "
           + target(group.map(\.router), samples: group.map(\.samples)) + "  "
-          + internet(group) + "     " + "\(problems.count)/\(group.count)"
+          + internet(group) + "  " + megabytes(group.compactMap(\.received)) + "  "
+          + megabytes(group.compactMap(\.sent)) + "  " + "\(problems.count)/\(group.count)"
           + (common.map { " mostly \($0.key.rawValue)" } ?? ""))
     }
     return lines.joined(separator: "\n") + "\n"
+  }
+
+  private static func megabytes(_ bytes: [UInt64]) -> String {
+    guard !bytes.isEmpty else { return pad("—", 6) }
+    return pad(String(format: "%.0f", Double(bytes.reduce(0, &+)) / 1_000_000), 6)
   }
 
   private static func internet(_ minutes: [MinuteSummary]) -> String {

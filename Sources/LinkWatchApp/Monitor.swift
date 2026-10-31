@@ -149,6 +149,10 @@ final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDe
     InterfaceAddresses.ipv4(on: interface)
   }
 
+  func traffic(on interface: String) -> TrafficCounters? {
+    InterfaceCounters.traffic(on: interface)
+  }
+
   /// Returns the IPv4 router assigned to the network service on this interface.
   ///
   /// This works while another interface, such as a VPN, owns the default route; probes stay
