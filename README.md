@@ -100,5 +100,24 @@ Rebuilding the ad-hoc-signed prototype may affect remembered permissions.
 The bundle is for local development, not notarised public distribution. See the
 [verification checklist](docs/verification.md) for remaining manual checks.
 
+## Headless diagnosis
+
+The app executable also runs as a command-line tool, so everything the menu bar
+shows is available as text or JSON for scripts and coding agents:
+
+```sh
+scripts/linkwatch status            # state, latency, loss, alert, discovery, profiles
+scripts/linkwatch status --json     # the same as JSON; absent values are null
+scripts/linkwatch watch --cycles 5  # monitor headlessly, one report per 2 s cycle
+scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
+scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test
+scripts/linkwatch authorize         # request Location permission from the terminal
+```
+
+Commands run through the app bundle, so they share its Location permission and
+saved profiles. `status`, `neighbors` and `authorize` send no traffic, and `watch`
+probes only networks with a saved profile, like the app. Output contains local
+network addresses; review it before sharing.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build checks and the required PR workflow.
 LinkWatch is open source under the [MIT licence](LICENSE).

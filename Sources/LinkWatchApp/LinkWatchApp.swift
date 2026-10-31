@@ -5,9 +5,8 @@ import Foundation
 import LinkWatchCore
 import SwiftUI
 
-@main
 struct LinkWatchApp: App {
-  @StateObject private var monitor = Monitor()
+  @StateObject private var monitor = Monitor.forInterface()
 
   var body: some Scene {
     MenuBarExtra {

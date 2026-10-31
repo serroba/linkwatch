@@ -6,10 +6,31 @@ public protocol LatencyProbe: Sendable {
   func measure(address: String, interface: String) async -> ProbeOutcome
 }
 
+/// Raw Wi-Fi facts behind the network identity, for diagnosing why it is unavailable.
+public struct WiFiState: Codable, Equatable, Sendable {
+  public var authorization: String
+  public var interface: String?
+  public var poweredOn: Bool
+  public var ssidVisible: Bool
+  public var bssidVisible: Bool
+
+  public init(
+    authorization: String, interface: String?, poweredOn: Bool, ssidVisible: Bool,
+    bssidVisible: Bool
+  ) {
+    self.authorization = authorization
+    self.interface = interface
+    self.poweredOn = poweredOn
+    self.ssidVisible = ssidVisible
+    self.bssidVisible = bssidVisible
+  }
+}
+
 /// Reports permission, the current Wi-Fi network and passive routing facts.
 @MainActor
 public protocol NetworkEnvironment: AnyObject {
   var isPermitted: Bool { get }
+  var wifiState: WiFiState { get }
   func currentNetwork() -> NetworkIdentity?
   /// The IPv4 router, only when this interface owns the default route.
   func defaultRouter(for interface: String) -> String?
@@ -33,7 +54,7 @@ public enum NetworkSuggestion: Equatable, Sendable {
 }
 
 /// The overall state shown in the menu bar.
-public enum DisplayState: Equatable, Sendable {
+public enum DisplayState: String, Codable, Equatable, Sendable {
   case idle
   case healthy
   case routerSlower
@@ -90,6 +111,9 @@ public final class MonitorController {
     }
     refresh()
   }
+
+  public var isPermitted: Bool { environment.isPermitted }
+  public var wifiState: WiFiState { environment.wifiState }
 
   public var accessPointLatency: Double? {
     guard session.window.samples.last?.accessPoint.latency != nil else { return nil }

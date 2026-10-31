@@ -26,6 +26,16 @@ final class Monitor: ObservableObject {
       uptime: { ProcessInfo.processInfo.systemUptime })
     environment.onAuthorizationChange = { [weak controller] in controller?.refresh() }
     observeLifecycle()
+  }
+
+  /// Starts the refresh and probe loops that drive the menu bar interface.
+  static func forInterface() -> Monitor {
+    let monitor = Monitor()
+    monitor.startLoops()
+    return monitor
+  }
+
+  private func startLoops() {
     Task { [weak controller] in
       while let controller {
         controller.refresh()
@@ -73,8 +83,40 @@ final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDe
     location.authorizationStatus == .authorizedAlways
   }
 
+  var wifiState: WiFiState {
+    let interface = wifi.interface()
+    return WiFiState(
+      authorization: authorizationDescription, interface: interface?.interfaceName,
+      poweredOn: interface?.powerOn() ?? false, ssidVisible: !(interface?.ssid() ?? "").isEmpty,
+      bssidVisible: !(interface?.bssid() ?? "").isEmpty)
+  }
+
+  /// The Wi-Fi interface name, which macOS reveals without Location permission.
+  var wifiInterfaceName: String? {
+    wifi.interface()?.interfaceName
+  }
+
+  var authorizationDescription: String {
+    switch location.authorizationStatus {
+    case .notDetermined: "not determined"
+    case .restricted: "restricted"
+    case .denied: "denied"
+    case .authorizedAlways: "authorized"
+    default: "unknown (\(location.authorizationStatus.rawValue))"
+    }
+  }
+
+  var isDenied: Bool {
+    [.denied, .restricted].contains(location.authorizationStatus)
+  }
+
   func requestPermission() {
     NSApp.activate(ignoringOtherApps: true)
+    requestAuthorization()
+  }
+
+  /// Requests Location permission without touching `NSApp`, which headless runs lack.
+  func requestAuthorization() {
     location.requestWhenInUseAuthorization()
   }
 

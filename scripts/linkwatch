@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Run LinkWatch headless commands through the app bundle so they share its
+# identity, Location permission and saved profiles. Build first with build_app.sh.
+set -euo pipefail
+executable="$(cd "$(dirname "$0")/.." && pwd)/dist/LinkWatch.app/Contents/MacOS/LinkWatch"
+if [[ ! -x "$executable" ]]; then
+  echo "LinkWatch: $executable not found; run scripts/build_app.sh first" >&2
+  exit 69
+fi
+exec "$executable" "${@:-help}"

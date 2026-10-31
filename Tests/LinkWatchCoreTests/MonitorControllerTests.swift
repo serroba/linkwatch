@@ -10,6 +10,11 @@ private let profile = NetworkProfile(ssid: "Home", accessPoint: "192.0.2.2", rou
 private final class FakeEnvironment: NetworkEnvironment {
   var isPermitted = true
   var network: NetworkIdentity? = home
+  var wifiState: WiFiState {
+    WiFiState(
+      authorization: isPermitted ? "authorized" : "not determined", interface: "en0",
+      poweredOn: true, ssidVisible: network != nil, bssidVisible: network != nil)
+  }
   var router: String?
   var neighborEntries: [NeighborEntry] = []
   var neighborReads = 0
@@ -325,4 +330,54 @@ private let separateAccessPoint = [
   harness.controller.networkChanged()
   #expect(harness.controller.discovery == nil)
   #expect(harness.controller.suggestion == nil)
+}
+
+@MainActor
+@Test func statusReportMirrorsControllerState() async throws {
+  let harness = Harness()
+  harness.environment.router = "192.0.2.1"
+  harness.controller.networkChanged()
+  harness.script.outcomes["192.0.2.1"] = .success(milliseconds: 50)
+  for _ in 0..<7 { _ = await harness.cycle() }
+  harness.script.outcomes["192.0.2.1"] = .timeout
+  _ = await harness.cycle()
+  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
+  #expect(report.state == .unreachable)
+  #expect(report.health == "unreachable(router)")
+  #expect(report.reason == "No reply from router")
+  #expect(report.network == home)
+  #expect(report.profile == profile)
+  #expect(report.latency.router == nil)
+  #expect(report.latency.accessPoint == 5)
+  #expect(report.samples == 8)
+  #expect(report.historyFailures == 1)
+  #expect(report.alertSeconds == 2)
+  #expect(report.discovery == StatusReport.Discovery(router: "192.0.2.1", accessPoint: "unknown"))
+  #expect(report.suggestion == nil)
+  #expect(
+    report.text.contains("State:       unreachable (unreachable(router)) — No reply from router"))
+  #expect(report.text.contains("Latency:     AP 5.0 ms · Router —"))
+  #expect(report.text.contains("Wi-Fi:       authorization authorized · interface en0 · on"))
+  #expect(report.text.contains("Discovery:   router 192.0.2.1 · AP not in ARP cache"))
+
+  let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(report)) as? [String: Any]
+  #expect(json?["suggestion"] is NSNull)
+  #expect((json?["latency"] as? [String: Any])?["router"] is NSNull)
+  #expect(try JSONDecoder().decode(StatusReport.self, from: JSONEncoder().encode(report)) == report)
+}
+
+@MainActor
+@Test func statusReportDescribesIdleSuggestion() {
+  let harness = Harness(profiles: nil)
+  harness.environment.router = "192.0.2.1"
+  harness.environment.neighborEntries = separateAccessPoint
+  harness.controller.networkChanged()
+  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
+  #expect(report.state == .idle)
+  #expect(report.alertSeconds == nil)
+  #expect(report.suggestion?.kind == "monitor")
+  #expect(report.suggestion?.ready == true)
+  #expect(
+    report.text.contains("Suggestion:  monitor this network (AP 192.0.2.2 · Router 192.0.2.1)"))
+  #expect(report.text.contains("Profiles:    0 saved"))
 }
