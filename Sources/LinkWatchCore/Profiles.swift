@@ -10,11 +10,13 @@ public struct NetworkProfile: Codable, Equatable, Identifiable, Sendable {
   public var internetReferences: Bool
   /// What links the access point to the router, such as "TP-Link powerline adapters".
   public var bridgeName: String?
+  /// Whether the network is a phone's personal hotspot, which changes the advice wording.
+  public var hotspot: Bool
 
   public init(
     id: UUID = UUID(), ssid: String, accessPoint: String, router: String,
     thresholds: Thresholds = Thresholds(), internetReferences: Bool = true,
-    bridgeName: String? = nil
+    bridgeName: String? = nil, hotspot: Bool = false
   ) {
     self.id = id
     self.ssid = ssid
@@ -23,12 +25,17 @@ public struct NetworkProfile: Codable, Equatable, Identifiable, Sendable {
     self.thresholds = thresholds
     self.internetReferences = internetReferences
     self.bridgeName = bridgeName
+    self.hotspot = hotspot
   }
+
+  /// One device is both access point and router, as with phone hotspots and single-box home
+  /// routers; it is probed once per cycle.
+  public var isSingleDevice: Bool { accessPoint == router }
 
   public var isValid: Bool {
     !ssid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && ssid.utf8.count <= 32 && Self.validAddress(accessPoint)
-      && Self.validAddress(router) && accessPoint != router && thresholds.isValid
+      && Self.validAddress(router) && thresholds.isValid
       && bridgeName.map { !$0.trimmingCharacters(in: .whitespaces).isEmpty && $0.count <= 60 }
         ?? true
   }
@@ -110,6 +117,7 @@ extension NetworkProfile {
       thresholds: try container.decode(Thresholds.self, forKey: .thresholds),
       internetReferences: try container.decodeIfPresent(Bool.self, forKey: .internetReferences)
         ?? true,
-      bridgeName: try container.decodeIfPresent(String.self, forKey: .bridgeName))
+      bridgeName: try container.decodeIfPresent(String.self, forKey: .bridgeName),
+      hotspot: try container.decodeIfPresent(Bool.self, forKey: .hotspot) ?? false)
   }
 }

@@ -29,9 +29,9 @@ private func neighbor(_ address: String, _ hardware: String, on interface: Strin
       neighbor("192.0.2.1", "00:00:5e:00:53:01"), neighbor("192.0.2.2", "00:00:5e:00:53:10"),
     ])
   #expect(discovery.accessPoint == .found("192.0.2.2"))
-  #expect(discovery.proposedProfile?.accessPoint == "192.0.2.2")
-  #expect(discovery.proposedProfile?.router == "192.0.2.1")
-  #expect(discovery.proposedProfile?.ssid == "Home")
+  #expect(discovery.proposedProfile()?.accessPoint == "192.0.2.2")
+  #expect(discovery.proposedProfile()?.router == "192.0.2.1")
+  #expect(discovery.proposedProfile()?.ssid == "Home")
 }
 
 @Test func accessPointDiscoveryFailsClosed() {
@@ -45,7 +45,7 @@ private func neighbor(_ address: String, _ hardware: String, on interface: Strin
       neighbor("192.0.2.2", "00:00:5e:00:53:10"), neighbor("192.0.2.3", "00:00:5e:00:53:11"),
     ])
   #expect(ambiguous.accessPoint == .unknown)
-  #expect(ambiguous.proposedProfile == nil)
+  #expect(ambiguous.proposedProfile() == nil)
   let otherInterface = NetworkDiscovery(
     network: network, router: "192.0.2.1",
     neighbors: [neighbor("192.0.2.2", "00:00:5e:00:53:10", on: "en5")])
@@ -55,7 +55,7 @@ private func neighbor(_ address: String, _ hardware: String, on interface: Strin
     neighbors: [neighbor("192.0.2.2", "00:00:5e:00:53:10")])
   #expect(noRouter.router == nil)
   #expect(noRouter.accessPoint == .found("192.0.2.2"))
-  #expect(noRouter.proposedProfile == nil)
+  #expect(noRouter.proposedProfile() == nil)
 }
 
 @Test func updatingKeepsProfileIdentityAndThresholds() {

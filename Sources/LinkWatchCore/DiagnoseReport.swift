@@ -139,7 +139,9 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
 
 extension DiagnoseReport {
   /// A readable report that leads with the answer and keeps the evidence below it.
-  public func text(bridgeNames: [String: String]) -> String {
+  ///
+  /// `hotspots` lists networks whose advice names the phone.
+  public func text(bridgeNames: [String: String], hotspots: Set<String> = []) -> String {
     let time = DateFormatter()
     time.setLocalizedDateFormatFromTemplate("EEE d MMM HH:mm")
     var lines = [
@@ -159,9 +161,11 @@ extension DiagnoseReport {
     lines.append("Incidents: \(incidents.count)")
     for incident in incidents.reversed() {
       let bridge = bridgeNames[incident.ssid]
-      lines.append("  " + incident.summary(bridge: bridge))
+      let hotspot = hotspots.contains(incident.ssid)
+      lines.append("  " + incident.summary(bridge: bridge, hotspot: hotspot))
       lines.append("    " + incident.evidence)
-      lines.append("    → " + (incident.verdict.action(bridge: bridge) ?? "No action needed."))
+      let action = incident.verdict.action(bridge: bridge, hotspot: hotspot)
+      lines.append("    → " + (action ?? "No action needed."))
     }
     if !hourly.isEmpty {
       lines.append("")

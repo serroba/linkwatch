@@ -47,11 +47,27 @@ public struct NetworkDiscovery: Equatable, Sendable {
     }
   }
 
-  /// A complete profile when both a router and a separate access point were found.
-  public var proposedProfile: NetworkProfile? {
-    guard let router, case .found(let accessPoint) = accessPoint else { return nil }
-    let profile = NetworkProfile(ssid: network.ssid, accessPoint: accessPoint, router: router)
+  /// A complete profile when the router is known and the access point is either a separate
+  /// device or the router itself; hotspots are flagged so advice talks about the phone.
+  public func proposedProfile(hotspot: Bool = false) -> NetworkProfile? {
+    guard let router else { return nil }
+    let accessPoint: String
+    switch self.accessPoint {
+    case .found(let address): accessPoint = address
+    case .router: accessPoint = router
+    case .unknown:
+      guard hotspot else { return nil }
+      accessPoint = router
+    }
+    let profile = NetworkProfile(
+      ssid: network.ssid, accessPoint: accessPoint, router: router, hotspot: hotspot)
     return profile.isValid ? profile : nil
+  }
+
+  /// iPhone personal hotspots hand out addresses from 172.20.10.0/28.
+  public var looksLikeIPhoneHotspot: Bool {
+    guard let router, let octets = NetworkProfile.octets(router) else { return false }
+    return octets[0] == 172 && octets[1] == 20 && octets[2] == 10 && octets[3] < 16
   }
 
   /// Applies discovered addresses to an existing profile, keeping its identity and thresholds.

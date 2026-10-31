@@ -108,7 +108,7 @@ public struct StatusReport: Codable, Equatable, Sendable {
     }
     historyFailures = history.filter { $0.accessPoint == nil || $0.router == nil }.count
     discovery = controller.discovery.map(Self.describe)
-    suggestion = controller.suggestion.map(Self.describe)
+    suggestion = controller.suggestion.map { Self.describe($0, hotspot: controller.isHotspot) }
     switch controller.accessPointSearch {
     case .idle: accessPointSearch = nil
     case .searching(let hosts): accessPointSearch = "searching \(hosts) addresses"
@@ -165,10 +165,10 @@ public struct StatusReport: Codable, Equatable, Sendable {
     }
   }
 
-  private static func describe(_ suggestion: NetworkSuggestion) -> Suggestion {
+  private static func describe(_ suggestion: NetworkSuggestion, hotspot: Bool) -> Suggestion {
     switch suggestion {
     case .monitor(let discovery):
-      let proposed = discovery.proposedProfile
+      let proposed = discovery.proposedProfile(hotspot: hotspot)
       return Suggestion(kind: "monitor", ready: proposed != nil, proposed: proposed)
     case .update(let current, let proposed):
       return Suggestion(kind: "update", ready: true, current: current, proposed: proposed)

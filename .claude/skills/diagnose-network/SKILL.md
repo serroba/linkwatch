@@ -70,6 +70,12 @@ already group problem minutes and name the most likely cause.
 | `allClear` | Working normally | All links fast, no loss |
 | `weakSignal` | The Mac's Wi-Fi signal is weak; move closer | AP slow, lossy or spiky with RSSI < −70 dBm or SNR < 20 dB |
 | `accessPoint` | Overloaded or failing AP | AP slow or lossy with a good signal (or signal unknown) |
+
+On a profile with `hotspot: true` the AP and router are the phone: `accessPoint`,
+`accessPointSpikes` and `weakSignal` mean the Mac-to-phone link (bring them closer or
+use a cable), and `internet`/`internetSpikes` mean the phone's mobile reception (move
+the phone, for example near a window). Internet references are sampled every 10 s
+there, so internet figures rest on fewer samples.
 | `bridge` | The link between AP and router (e.g. powerline adapters) | AP fine, router slow or lost while the internet is also affected |
 | `routerSilent` | Router ignores pings, traffic still flows | Router lost, internet fine |
 | `routerUnreachable` | Router silent, no internet evidence | Router lost, internet not probed |

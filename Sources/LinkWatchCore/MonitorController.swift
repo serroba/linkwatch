@@ -76,6 +76,8 @@ public protocol NetworkEnvironment: AnyObject {
   func traffic(on interface: String) -> TrafficCounters?
   /// The radio's signal readings, or nil when unavailable.
   func signal() -> WiFiSignal?
+  /// Whether macOS marks the current path as expensive, as it does for phone hotspots.
+  var isExpensivePath: Bool { get }
 }
 
 /// Persists approved network profiles on this Mac.
@@ -128,6 +130,8 @@ public final class MonitorController {
   /// The latest Wi-Fi radio readings while monitoring.
   public internal(set) var signal: WiFiSignal?
   @ObservationIgnored var lastTraffic: TrafficReading?
+  /// Counts probe cycles, to space out internet references on metered connections.
+  @ObservationIgnored var cycles = 0
   /// Rates from the last five cycles and the highest seen in this session.
   @ObservationIgnored var recentRates: [Double] = []
   @ObservationIgnored var sessionPeakRate: Double = 0
@@ -241,20 +245,6 @@ public final class MonitorController {
     refresh()
   }
 
-  /// Saves the suggested profile when it has both a router and a separate AP.
-  @discardableResult
-  public func acceptSuggestion() -> Bool {
-    switch suggestion {
-    case .monitor(let discovery):
-      guard let profile = discovery.proposedProfile else { return false }
-      return save(profile)
-    case .update(_, let proposed):
-      return save(proposed)
-    case nil:
-      return false
-    }
-  }
-
   /// Hides the current suggestion until the discovered addresses change.
   public func dismissSuggestion() {
     if let discovery { dismissed.insert(Self.key(discovery)) }
@@ -284,15 +274,18 @@ public final class MonitorController {
       let generation = session.generation
       let probe = probe
       let uptime = uptime
-      let references = profile.internetReferences ? InternetReference.all.map(\.address) : []
+      cycles += 1
+      let references = referencesToProbe(for: profile)
       let task = Task {
-        async let accessPoint = probe.measure(
-          address: profile.accessPoint, interface: network.interface)
-        async let router = probe.measure(address: profile.router, interface: network.interface)
+        let addresses =
+          profile.isSingleDevice ? [profile.router] : [profile.accessPoint, profile.router]
+        async let local = Self.measure(addresses, over: network.interface, with: probe)
         async let internet = Self.measure(references, over: network.interface, with: probe)
-        let outcomes = await (accessPoint, router, internet)
+        let outcomes = await (local, internet)
+        // A single device answers for both the access point and the router.
         return ProbePair(
-          elapsed: uptime(), accessPoint: outcomes.0, router: outcomes.1, internet: outcomes.2)
+          elapsed: uptime(), accessPoint: outcomes.0[0], router: outcomes.0[outcomes.0.count - 1],
+          internet: outcomes.1)
       }
       inFlight = task
       let pair = await task.value

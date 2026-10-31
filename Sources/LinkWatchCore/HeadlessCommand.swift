@@ -67,12 +67,15 @@ public enum HeadlessCommand: Equatable, Sendable {
       profile set --ssid NAME [--ap ADDRESS] [--router ADDRESS]
                   [--difference MS] [--recovery-difference MS] [--slow MS]
                   [--recovery-slow MS] [--sustained SECONDS] [--recovery SECONDS]
-                  [--internet on|off] [--bridge NAME | --no-bridge]
+                  [--internet on|off] [--bridge NAME | --no-bridge] [--hotspot on|off]
                              Create or change a profile; omitted values keep their current
                              setting. A new profile needs --ap and --router. --internet
                              also pings Cloudflare 1.1.1.1 and Google 8.8.8.8 (default on).
                              --bridge names the device between the AP and the router, used
                              in advice such as "Restart the TP-Link powerline adapters".
+                             --hotspot marks a phone's personal hotspot: advice names the
+                             phone and internet pings run every 10 s to save mobile data.
+                             The AP and router may be the same address.
       profile remove NAME    Delete a profile; its network is no longer probed.
       history clear          Delete the stored week of history, as in Settings.
       export [--days N] [--dir PATH] [--redact]
@@ -207,6 +210,7 @@ public struct ProfileUpdate: Equatable, Sendable {
   public var sustainedSeconds: Double?
   public var recoverySeconds: Double?
   public var internetReferences: Switch?
+  public var hotspot: Switch?
   /// A new bridge name, or `.some(nil)` to remove it.
   public var bridgeName: String??
 
@@ -234,11 +238,18 @@ public struct ProfileUpdate: Equatable, Sendable {
       options.remove(at: index)
       bridgeName = .some(nil)
     }
-    switch try HeadlessCommand.take(value: "--internet", from: &options) {
-    case nil: internetReferences = nil
-    case "on": internetReferences = .enabled
-    case "off": internetReferences = .disabled
-    default: throw .init(description: "--internet must be on or off")
+    internetReferences = try Self.switchValue("--internet", from: &options)
+    hotspot = try Self.switchValue("--hotspot", from: &options)
+  }
+
+  private static func switchValue(_ name: String, from options: inout [String])
+    throws(HeadlessCommand.UsageError) -> Switch?
+  {
+    switch try HeadlessCommand.take(value: name, from: &options) {
+    case nil: nil
+    case "on": .enabled
+    case "off": .disabled
+    default: throw .init(description: "\(name) must be on or off")
     }
   }
 
@@ -255,6 +266,7 @@ public struct ProfileUpdate: Equatable, Sendable {
     if let thresholds = profile?.thresholds { profile?.thresholds = applied(to: thresholds) }
     if let internetReferences { profile?.internetReferences = internetReferences == .enabled }
     if let bridgeName { profile?.bridgeName = bridgeName }
+    if let hotspot { profile?.hotspot = hotspot == .enabled }
     return profile
   }
 

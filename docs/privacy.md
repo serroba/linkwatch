@@ -21,7 +21,9 @@ Wi-Fi interface:
   unless internet reference points are turned off for that network. These leave
   your network, so both providers can see your public IP address and that it pings
   them. Turn them off per network in Settings or with
-  `profile set --ssid NAME --internet off`.
+  `profile set --ssid NAME --internet off`. On a phone hotspot, or any connection
+  macOS marks as expensive, these run every ten seconds instead, and a network whose
+  access point is the router receives one ping per cycle rather than two.
 - **Find AP**, only when you click it: one ping to each address of your Wi-Fi subnet,
   so macOS learns the access point's hardware address. It refuses public networks
   and subnets larger than /22.

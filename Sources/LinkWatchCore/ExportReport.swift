@@ -9,7 +9,7 @@ public struct ExportedReport: Equatable, Sendable {
 
   public init(
     report: DiagnoseReport, minutes: [MinuteSummary], bridgeNames: [String: String],
-    redact: Bool
+    hotspots: Set<String> = [], redact: Bool
   ) {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -20,7 +20,7 @@ public struct ExportedReport: Equatable, Sendable {
       redact
       ? "Network names, local addresses and hardware addresses are replaced with placeholders."
       : "This report contains the network name and local addresses. Share it only with people you trust."
-    let text = header + "\n\n" + report.text(bridgeNames: bridgeNames)
+    let text = header + "\n\n" + report.text(bridgeNames: bridgeNames, hotspots: hotspots)
     let encoder = JSONEncoder()
     encoder.dateEncodingStrategy = .iso8601
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]

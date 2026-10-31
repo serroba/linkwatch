@@ -90,8 +90,12 @@ final class Monitor: ObservableObject {
           Task { @MainActor in controller?.setSleeping(sleeping) }
         })
     }
-    pathMonitor.pathUpdateHandler = { [weak controller] _ in
-      Task { @MainActor in controller?.networkChanged() }
+    pathMonitor.pathUpdateHandler = { [weak controller, environment] path in
+      let expensive = path.isExpensive
+      Task { @MainActor in
+        environment.isExpensivePath = expensive
+        controller?.networkChanged()
+      }
     }
     pathMonitor.start(queue: DispatchQueue(label: "LinkWatch.network"))
   }
@@ -101,6 +105,8 @@ final class Monitor: ObservableObject {
 @MainActor
 final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDelegate {
   var onAuthorizationChange: (@MainActor () -> Void)?
+  /// Set from the path monitor; macOS marks phone hotspots as expensive.
+  var isExpensivePath = false
   private let location = CLLocationManager()
   private let wifi = CWWiFiClient.shared()
 
