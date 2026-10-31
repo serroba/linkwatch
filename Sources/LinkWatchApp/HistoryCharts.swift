@@ -1,7 +1,27 @@
 import Charts
+import Combine
 import Foundation
 import LinkWatchCore
 import SwiftUI
+
+/// The span shown by the panel's history chart.
+enum ChartRange: String, CaseIterable, Identifiable {
+  case hour = "1 h"
+  case day = "24 h"
+  case week = "7 d"
+
+  var id: Self { self }
+  var seconds: TimeInterval { self == .day ? 86_400 : 604_800 }
+}
+
+@MainActor
+final class DetailOptions: ObservableObject {
+  @Published var range = ChartRange.hour
+  @Published var exportMessage: String?
+  @Published var markText = ""
+  @Published var markMessage: String?
+  @Published var testDevice = "desk"
+}
 
 /// Minute medians for one or seven days; red marks minutes with an alert or a lost reply.
 struct WeekChart: View {

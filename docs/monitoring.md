@@ -106,6 +106,16 @@ router, whose loss grows by ten points) is named as most likely affected; otherw
 it says there is no clear effect. Correlation is evidence, not proof: repeat the
 activity at different times to rule out coincidence.
 
+## Device tests
+
+A guided test has three 30-second phases: as usual, device on, device off. Each
+phase's raw two-second pairs (fifteen per link, at least ten required) give a
+nearest-rank 95th percentile and loss per link. The on phase is compared with the
+calmer of the other two using the same rule as marked activities (spikes up by
+50 ms and at least doubled, or router loss up by ten points), and the off phase with
+the first to say whether the link recovered. Pausing, sleep or any network change
+cancels a running test. Each step and the conclusion are recorded as events.
+
 ## Usage
 
 Each cycle reads the Wi-Fi interface's 64-bit byte counters from the kernel

@@ -51,6 +51,13 @@ extension HeadlessCommand {
     return .history(hours: hours, json: json)
   }
 
+  static func testDevice(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
+    guard let device = AppEvent.markLabel(arguments.joined(separator: " ")) else {
+      throw UsageError(description: "test-device needs a device name, such as \"desk\"")
+    }
+    return .testDevice(device)
+  }
+
   static func mark(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
     guard let label = AppEvent.markLabel(arguments.joined(separator: " ")) else {
       throw UsageError(description: "mark needs a short label, such as \"desk moved\"")

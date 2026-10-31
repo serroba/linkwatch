@@ -101,20 +101,70 @@ public struct MarkEffect: Codable, Equatable, Sendable {
     guard occurrences >= minimumOccurrences else {
       return "Not enough marks yet: mark it at least \(minimumOccurrences) times to compare."
     }
-    func worse(_ after: Double?, _ baseline: Double?) -> Bool {
-      guard let after, let baseline else { return false }
-      return after - baseline >= 50 && after >= baseline * 2
+    return AffectedLink(
+      during: LinkSpikes(
+        accessPoint: after.accessPointP95, router: after.routerP95,
+        internet: after.internetP95, routerLoss: after.routerLoss),
+      reference: LinkSpikes(
+        accessPoint: baseline.accessPointP95, router: baseline.routerP95,
+        internet: baseline.internetP95, routerLoss: baseline.routerLoss)
+    ).sentence
+  }
+
+}
+
+/// Typical spikes per link and router loss, for comparing two periods.
+struct LinkSpikes: Equatable {
+  var accessPoint: Double?
+  var router: Double?
+  var internet: Double?
+  var routerLoss: Double
+}
+
+/// Which link a disturbance affects, shared by marks and device tests so they never disagree.
+enum AffectedLink: String, Codable, Equatable, Sendable {
+  case wifi
+  case bridge
+  case internet
+  case none
+
+  /// The first link whose spikes grow by at least 50 ms and at least double, or (for the
+  /// router) whose loss grows by ten points.
+  init(during: LinkSpikes, reference: LinkSpikes) {
+    func worse(_ during: Double?, _ reference: Double?) -> Bool {
+      guard let during, let reference else { return false }
+      return during - reference >= 50 && during >= reference * 2
     }
-    if worse(after.accessPointP95, baseline.accessPointP95) {
-      return "Most likely affects the Wi-Fi link to the access point."
+    if worse(during.accessPoint, reference.accessPoint) {
+      self = .wifi
+    } else if worse(during.router, reference.router)
+      || during.routerLoss - reference.routerLoss >= 0.1
+    {
+      self = .bridge
+    } else if worse(during.internet, reference.internet) {
+      self = .internet
+    } else {
+      self = .none
     }
-    if worse(after.routerP95, baseline.routerP95) || after.routerLoss - baseline.routerLoss >= 0.1 {
-      return
-        "Most likely affects the link between the access point and the router, such as powerline adapters."
+  }
+
+  /// The affected link, for sentences such as "The desk most likely disturbs …".
+  var linkName: String {
+    switch self {
+    case .wifi: "the Wi-Fi link to the access point"
+    case .bridge: "the link between the access point and the router, such as powerline adapters"
+    case .internet: "the internet connection"
+    case .none: "no link"
     }
-    if worse(after.internetP95, baseline.internetP95) {
-      return "Coincides with slower internet; home links look unaffected."
+  }
+
+  var sentence: String {
+    switch self {
+    case .wifi: "Most likely affects the Wi-Fi link to the access point."
+    case .bridge:
+      "Most likely affects the link between the access point and the router, such as powerline adapters."
+    case .internet: "Coincides with slower internet; home links look unaffected."
+    case .none: "No clear effect on any link."
     }
-    return "No clear effect on any link."
   }
 }

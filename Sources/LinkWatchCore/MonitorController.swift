@@ -127,12 +127,15 @@ public final class MonitorController {
   /// Rates from the last five cycles and the highest seen in this session.
   @ObservationIgnored var recentRates: [Double] = []
   @ObservationIgnored var sessionPeakRate: Double = 0
+  /// The guided device test, if one is running or has a result to show.
+  public internal(set) var deviceTest = DeviceTestState.idle
+  @ObservationIgnored var deviceTestBounds: [DeviceTestPhase: ClosedRange<TimeInterval>] = [:]
   public internal(set) var historyError: String?
 
   @ObservationIgnored let environment: any NetworkEnvironment
   @ObservationIgnored let probe: any LatencyProbe
   @ObservationIgnored private let store: any ProfileStore
-  @ObservationIgnored private let uptime: @MainActor () -> TimeInterval
+  @ObservationIgnored let uptime: @MainActor () -> TimeInterval
   @ObservationIgnored let historyStore: any HistoryStore
   @ObservationIgnored let events: any EventStore
   @ObservationIgnored var observed = ObservedState()
@@ -296,6 +299,7 @@ public final class MonitorController {
       if generation == session.generation, session.window.samples.last == pair {
         record(pair, traffic: trafficDelta(on: network.interface, at: pair.elapsed))
         updateVerdict(at: pair.elapsed)
+        advanceDeviceTest(at: pair.elapsed)
       }
       if previous != session.window.health { healthSince = uptime() }
       reason = currentReason()
@@ -355,6 +359,7 @@ public final class MonitorController {
     lastTraffic = nil
     recentRates = []
     sessionPeakRate = 0
+    cancelDeviceTest("Monitoring stopped or the network changed, so the test was cancelled.")
   }
 
   private func invalidate() {

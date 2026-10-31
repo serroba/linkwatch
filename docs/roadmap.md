@@ -33,6 +33,9 @@ happened and which link failed, on the Mac where it happened.
   project skill so coding agents answer "what's going on with my network?" from the
   evidence.
 - **Releases** from version tags with a checksum-verifying installer.
+- **Marks and a guided device test** to check whether something at home, such as an
+  electric desk, disturbs a link, and an **event log** that explains gaps.
+- **Lag-spike detection**, so stutter hidden behind healthy medians is reported.
 - **Export report** for sending a week of evidence from another Mac, with optional
   redaction, which the diagnose skill reads directly.
 - **Survives restarts**: opens at login, and settings and the week of history are
