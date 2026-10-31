@@ -13,6 +13,8 @@ public enum HeadlessCommand: Equatable, Sendable {
   case listProfiles(json: Bool)
   case setProfile(ProfileUpdate)
   case removeProfile(ssid: String)
+  case history(hours: Int, json: Bool)
+  case clearHistory
   case help
 
   public struct UsageError: Error, Equatable, CustomStringConvertible {
@@ -29,6 +31,8 @@ public enum HeadlessCommand: Equatable, Sendable {
                              Print the state every 2 seconds. Follows the running app; with
                              --local, or when the app is not running, monitors headlessly
                              (probing only networks with a saved profile, like the app).
+      history [--hours N]    Show stored history for the last N hours (default 24, up to 168):
+                             hourly rollups in text, every minute summary with --json.
       neighbors              List cached ARP neighbours on the Wi-Fi interface and which one
                              matches the associated BSSID. Sends no traffic.
       probe ADDRESS [--interface NAME] [--count N]
@@ -49,6 +53,7 @@ public enum HeadlessCommand: Equatable, Sendable {
                              Create or change a profile; omitted values keep their current
                              setting. A new profile needs --ap and --router.
       profile remove NAME    Delete a profile; its network is no longer probed.
+      history clear          Delete the stored week of history, as in Settings.
       authorize              Report Location permission, which is granted from the app's
                              Settings window because macOS prompts only for the app.
       help                   Show this help.
@@ -69,6 +74,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "watch": command = try watch(&options, json: json)
     case "probe": return try probe(options, json: json)
     case "profile": return try profile(options, json: json)
+    case "history": return try history(options, json: json)
     default:
       let local = take(flag: "--local", from: &options)
       guard let simple = simple(name, json: json, local: local) else { return nil }
@@ -134,6 +140,20 @@ public enum HeadlessCommand: Equatable, Sendable {
     default:
       throw UsageError(description: "profile needs list, set or remove")
     }
+  }
+
+  private static func history(_ arguments: [String], json: Bool) throws(UsageError)
+    -> HeadlessCommand
+  {
+    var options = arguments
+    if options.first == "clear" {
+      try requireEmpty(Array(options.dropFirst()))
+      return .clearHistory
+    }
+    let hours = try take(count: "--hours", from: &options) ?? 24
+    guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
+    try requireEmpty(options)
+    return .history(hours: hours, json: json)
   }
 
   private static func requireEmpty(_ options: [String]) throws(UsageError) {

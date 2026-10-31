@@ -11,7 +11,8 @@ and provides enough recent history to investigate intermittent problems.
 ## Intended experience
 
 The menu bar shows a health indicator and live numbers, for example
-`● AP 1 · R 62 ms`. Clicking it opens latency, packet loss, about 15 minutes of history, the
+`● AP 1 · R 62 ms`. Clicking it opens latency, packet loss, history for the last hour,
+day or week, the
 router-minus-AP difference, the active network and the duration of an alert.
 Pause controls and local network-profile settings make monitoring explicit.
 
@@ -47,9 +48,12 @@ above 20 ms must persist for ten seconds before alerting. Recovery uses lower
 thresholds and sustained healthy samples to avoid flickering. Thresholds are
 configurable; [monitoring semantics](docs/monitoring.md) define the exact rules.
 
-Settings stay on the Mac, history is bounded and held in memory, and there is no
-telemetry. The only subnet-wide traffic is the explicit, one-time **Find AP** search. macOS Location permission is used to
-identify the current Wi-Fi network; the app does not need location coordinates.
+Settings and history stay on the Mac, and there is no telemetry. The last hour is
+kept in memory as raw 2-second pairs; per-minute summaries (median, 95th percentile
+and loss for each target, and the worst state) are stored privately for seven days
+and can be cleared in Settings. The only subnet-wide traffic is the explicit,
+one-time **Find AP** search. macOS Location permission is used to identify the
+current Wi-Fi network; the app does not need location coordinates.
 Probes bind to the selected Wi-Fi interface. Network changes, roaming and
 sleep/wake must cancel pending work and discard stale measurements.
 
@@ -122,6 +126,8 @@ scripts/linkwatch find-ap           # opt-in one-time subnet ping to locate the 
 scripts/linkwatch pause | resume    # the panel's pause toggle
 scripts/linkwatch profile list | set --ssid NAME [--ap A] [--router R] [--difference MS ...]
 scripts/linkwatch profile remove NAME
+scripts/linkwatch history --hours 6 # hourly rollups of the stored week (--json: every minute)
+scripts/linkwatch history clear     # delete the stored week, as in Settings
 scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
 scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test
 scripts/linkwatch authorize         # ask the running app to request Location permission

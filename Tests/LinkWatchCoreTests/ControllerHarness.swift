@@ -77,6 +77,35 @@ struct FakeProbe: LatencyProbe {
 @MainActor
 final class Clock {
   var now: TimeInterval = 100
+  /// Wall-clock time that advances with `now`, starting on a minute boundary.
+  var date: Date { Date(timeIntervalSinceReferenceDate: 800_000_040 + now - 100) }
+}
+
+final class FakeHistoryStore: HistoryStore {
+  var saved: [MinuteSummary] = []
+  var failsToLoad = false
+  var failsToWrite = false
+  var prunes: [Date] = []
+
+  func load(since date: Date) throws -> [MinuteSummary] {
+    if failsToLoad { throw StoreFailure() }
+    return saved.filter { $0.start >= date }
+  }
+
+  func append(_ summary: MinuteSummary) throws {
+    if failsToWrite { throw StoreFailure() }
+    saved.append(summary)
+  }
+
+  func prune(before date: Date) throws {
+    prunes.append(date)
+    saved.removeAll { $0.start < date }
+  }
+
+  func clear() throws {
+    if failsToWrite { throw StoreFailure() }
+    saved = []
+  }
 }
 
 @MainActor
@@ -85,15 +114,20 @@ struct Harness {
   let script = ProbeScript()
   let clock = Clock()
   let store: FakeStore
+  let history: FakeHistoryStore
   let controller: MonitorController
 
-  init(profiles: [NetworkProfile]? = [homeProfile], store: FakeStore? = nil) {
+  init(
+    profiles: [NetworkProfile]? = [homeProfile], store: FakeStore? = nil,
+    history: FakeHistoryStore = FakeHistoryStore()
+  ) {
     let store = store ?? FakeStore(profiles)
     let clock = clock
     self.store = store
+    self.history = history
     controller = MonitorController(
       environment: environment, probe: FakeProbe(script: script), store: store,
-      uptime: { clock.now })
+      history: history, uptime: { clock.now }, now: { clock.date })
   }
 
   func cycle(advancing seconds: TimeInterval = 2) async -> TimeInterval {
@@ -107,3 +141,11 @@ let separateAccessPoint = [
   NeighborEntry(address: "192.0.2.1", hardwareAddress: "00:00:5e:00:53:99", interface: "en0"),
   NeighborEntry(address: "192.0.2.2", hardwareAddress: "00:00:5e:00:53:00", interface: "en0"),
 ]
+
+func target(_ median: Double?, _ p95: Double?, loss: Double) -> TargetSummary {
+  var summary = TargetSummary([])
+  summary.median = median
+  summary.p95 = p95
+  summary.loss = loss
+  return summary
+}

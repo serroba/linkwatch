@@ -49,6 +49,10 @@ public struct StatusReport: Codable, Equatable, Sendable {
   public var discovery: Discovery?
   public var suggestion: Suggestion?
   public var accessPointSearch: String?
+  public var weekMinutes: Int
+  /// ISO 8601 start of the oldest stored minute.
+  public var weekStart: String?
+  public var historyError: String?
   public var profiles: [NetworkProfile]
   public var storageError: String?
 
@@ -88,6 +92,9 @@ public struct StatusReport: Codable, Equatable, Sendable {
     case .searching(let hosts): accessPointSearch = "searching \(hosts) addresses"
     case .finished(let message): accessPointSearch = message
     }
+    weekMinutes = controller.week.minutes.count
+    weekStart = controller.week.minutes.first.map { ISO8601DateFormatter().string(from: $0.start) }
+    historyError = controller.historyError
     profiles = controller.profiles
     storageError = controller.storageError
   }
@@ -159,6 +166,10 @@ extension StatusReport {
         latency.accessPointLoss * 100, latency.routerLoss * 100, samples))
     lines.append("Alert:       \(alertText)")
     lines.append("History:     \(history.count) pairs, \(historyFailures) with a failed probe")
+    lines.append(
+      "Week:        \(weekMinutes) minute \(weekMinutes == 1 ? "summary" : "summaries")"
+        + (weekStart.map { " since \($0)" } ?? ""))
+    if let historyError { lines.append("History err: \(historyError)") }
     lines.append("Discovery:   " + (discovery.map(Self.summary) ?? "not run"))
     lines.append("Suggestion:  " + (suggestion.map(Self.summary) ?? "none"))
     if let accessPointSearch { lines.append("AP search:   \(accessPointSearch)") }
@@ -223,6 +234,9 @@ extension StatusReport {
     try container.encode(discovery, forKey: .discovery)
     try container.encode(suggestion, forKey: .suggestion)
     try container.encode(accessPointSearch, forKey: .accessPointSearch)
+    try container.encode(weekMinutes, forKey: .weekMinutes)
+    try container.encode(weekStart, forKey: .weekStart)
+    try container.encode(historyError, forKey: .historyError)
     try container.encode(profiles, forKey: .profiles)
     try container.encode(storageError, forKey: .storageError)
   }

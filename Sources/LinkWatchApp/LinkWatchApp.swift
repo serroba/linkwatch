@@ -59,8 +59,24 @@ extension DisplayState {
   }
 }
 
+/// The span shown by the panel's history chart.
+private enum ChartRange: String, CaseIterable, Identifiable {
+  case hour = "1 h"
+  case day = "24 h"
+  case week = "7 d"
+
+  var id: Self { self }
+  var seconds: TimeInterval { self == .day ? 86_400 : 604_800 }
+}
+
+@MainActor
+private final class DetailOptions: ObservableObject {
+  @Published var range = ChartRange.hour
+}
+
 private struct DetailView: View {
   @Bindable var monitor: MonitorController
+  @StateObject private var options = DetailOptions()
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
@@ -98,7 +114,17 @@ private struct DetailView: View {
             format: "Packet loss, last 2 min — AP %.0f%% · Router %.0f%%",
             monitor.session.window.accessPointLoss * 100,
             monitor.session.window.routerLoss * 100))
-        HistoryChart(history: monitor.session.window.history)
+        Picker("History", selection: $options.range) {
+          ForEach(ChartRange.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        if options.range == .hour {
+          HistoryChart(history: monitor.session.window.history)
+        } else {
+          let cutoff = Date().addingTimeInterval(-options.range.seconds)
+          WeekChart(minutes: monitor.week.minutes.filter { $0.start >= cutoff })
+        }
         if monitor.session.window.health != .healthy {
           TimelineView(.periodic(from: .now, by: 1)) { _ in
             let seconds = Int(ProcessInfo.processInfo.systemUptime - monitor.healthSince)
@@ -207,53 +233,11 @@ private struct SuggestionCard: View {
   }
 }
 
-private struct HistoryChart: View {
-  let history: [ProbePair]
-
-  var body: some View {
-    let latest = history.last?.elapsed ?? 0
-    let failures = history.filter { $0.accessPoint.latency == nil || $0.router.latency == nil }
-    VStack(alignment: .leading, spacing: 4) {
-      Text("Last \(max(1, Int(((history.first.map { latest - $0.elapsed }) ?? 0) / 60))) min")
-        .font(.caption).foregroundStyle(.secondary)
-      Chart {
-        ForEach(Array(history.enumerated()), id: \.offset) { _, pair in
-          let minutesAgo = (pair.elapsed - latest) / 60
-          if let latency = pair.accessPoint.latency {
-            LineMark(x: .value("Minutes", minutesAgo), y: .value("ms", latency))
-              .foregroundStyle(by: .value("Target", "AP"))
-          }
-          if let latency = pair.router.latency {
-            LineMark(x: .value("Minutes", minutesAgo), y: .value("ms", latency))
-              .foregroundStyle(by: .value("Target", "Router"))
-          }
-        }
-        ForEach(Array(failures.enumerated()), id: \.offset) { _, pair in
-          RuleMark(x: .value("Minutes", (pair.elapsed - latest) / 60))
-            .foregroundStyle(.purple.opacity(0.4))
-        }
-      }
-      .chartXAxis {
-        AxisMarks { value in
-          AxisGridLine()
-          AxisValueLabel {
-            if let minutes = value.as(Double.self) { Text("\(Int(minutes.rounded())) min") }
-          }
-        }
-      }
-      .chartYAxisLabel("ms")
-      .frame(height: 120)
-      .accessibilityLabel(
-        "Latency history for the last \(history.count) measurements in milliseconds, with \(failures.count) failed measurements marked"
-      )
-    }
-  }
-}
-
 @MainActor
 private final class ProfileEditor: ObservableObject {
   @Published var draft = NetworkProfile(ssid: "", accessPoint: "", router: "")
   @Published var message = ""
+  @Published var confirmingClear = false
 }
 
 private struct ProfileSettings: View {
@@ -328,6 +312,18 @@ private struct ProfileSettings: View {
       .disabled(!editor.draft.isValid)
       if !editor.message.isEmpty { Text(editor.message) }
       if let error = monitor.storageError { Text(error).foregroundStyle(.red) }
+      Section("History") {
+        Text(
+          "\(monitor.week.minutes.count) minute summaries are stored on this Mac for up to 7 days."
+        )
+        if let error = monitor.historyError { Text(error).foregroundStyle(.red) }
+        Button("Clear history…", role: .destructive) { editor.confirmingClear = true }
+          .confirmationDialog(
+            "Delete the stored week of history?", isPresented: $editor.confirmingClear
+          ) {
+            Button("Clear history", role: .destructive) { monitor.clearHistory() }
+          }
+      }
       Text(
         "No telemetry or desktop notifications. Settings stay on this Mac. ICMP differences do not identify a faulty component."
       )

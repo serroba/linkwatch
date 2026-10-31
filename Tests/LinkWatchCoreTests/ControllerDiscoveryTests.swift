@@ -200,3 +200,56 @@ import Testing
     harness.controller.accessPointSearch
       == .finished("No device among 1 address matches the AP. Enter its address in Settings."))
 }
+
+@MainActor
+@Test func monitoringStoresMinuteSummariesAndFlushesOnPause() async {
+  let harness = Harness()
+  for _ in 0..<31 { _ = await harness.cycle() }
+  #expect(harness.history.saved.count == 1)
+  #expect(harness.history.saved.first?.samples == 30)
+  #expect(harness.history.saved.first?.ssid == "Home")
+  #expect(harness.history.saved.first?.accessPoint.median == 5)
+  harness.controller.paused = true
+  #expect(harness.history.saved.count == 2)
+  #expect(harness.history.saved.last?.samples == 1)
+  #expect(harness.controller.week.minutes.count == 2)
+  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
+  #expect(report.weekMinutes == 2)
+  #expect(report.text.contains("Week:        2 minute summaries since "))
+}
+
+@MainActor
+@Test func storedHistoryLoadsWithinRetentionAndCanBeCleared() {
+  let history = FakeHistoryStore()
+  let start = Date(timeIntervalSinceReferenceDate: 800_000_040)
+  let summary = MinuteSummary(
+    start: start.addingTimeInterval(-3600), ssid: "Home", samples: 30,
+    accessPoint: target(2, 3, loss: 0),
+    router: target(5, 9, loss: 0), worstHealth: "healthy")
+  var expired = summary
+  expired.start = start.addingTimeInterval(-WeekHistory.retention - 60)
+  history.saved = [expired, summary]
+  let harness = Harness(history: history)
+  #expect(harness.controller.week.minutes == [summary])
+  #expect(history.saved == [summary])
+  #expect(history.prunes == [start.addingTimeInterval(-WeekHistory.retention)])
+  harness.controller.clearHistory()
+  #expect(history.saved.isEmpty)
+  #expect(harness.controller.week.minutes.isEmpty)
+}
+
+@MainActor
+@Test func historyFailuresAreReportedWithoutStoppingMonitoring() async {
+  let history = FakeHistoryStore()
+  history.failsToLoad = true
+  let harness = Harness(history: history)
+  #expect(harness.controller.historyError != nil)
+  history.failsToWrite = true
+  for _ in 0..<31 { _ = await harness.cycle() }
+  #expect(harness.controller.session.window.samples.count == 31)
+  #expect(
+    harness.controller.historyError
+      == "History could not be saved; the menu shows only recent measurements.")
+  harness.controller.clearHistory()
+  #expect(harness.controller.historyError == "History could not be cleared.")
+}

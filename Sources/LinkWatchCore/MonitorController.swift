@@ -97,12 +97,16 @@ public final class MonitorController {
   public private(set) var sleeping = false
   public private(set) var discovery: NetworkDiscovery?
   public private(set) var suggestion: NetworkSuggestion?
-  public private(set) var accessPointSearch = AccessPointSearch.idle
+  public internal(set) var accessPointSearch = AccessPointSearch.idle
+  public internal(set) var week = WeekHistory()
+  public internal(set) var historyError: String?
 
-  @ObservationIgnored private let environment: any NetworkEnvironment
-  @ObservationIgnored private let probe: any LatencyProbe
+  @ObservationIgnored let environment: any NetworkEnvironment
+  @ObservationIgnored let probe: any LatencyProbe
   @ObservationIgnored private let store: any ProfileStore
   @ObservationIgnored private let uptime: @MainActor () -> TimeInterval
+  @ObservationIgnored let historyStore: any HistoryStore
+  @ObservationIgnored let now: @MainActor () -> Date
   @ObservationIgnored private var inFlight: Task<ProbePair, Never>?
   @ObservationIgnored private var dismissed: Set<String> = []
   @ObservationIgnored private var needsDiscovery = true
@@ -111,14 +115,18 @@ public final class MonitorController {
 
   public init(
     environment: any NetworkEnvironment, probe: any LatencyProbe, store: any ProfileStore,
-    uptime: @escaping @MainActor () -> TimeInterval
+    history: any HistoryStore, uptime: @escaping @MainActor () -> TimeInterval,
+    now: @escaping @MainActor () -> Date
   ) {
     self.environment = environment
     self.probe = probe
     self.store = store
+    self.historyStore = history
     self.uptime = uptime
+    self.now = now
     healthSince = uptime()
     loadProfiles()
+    loadHistory()
     refresh()
   }
 
@@ -205,60 +213,6 @@ public final class MonitorController {
     }
   }
 
-  /// Pings every host in the Wi-Fi subnet once so the ARP cache can reveal the access point.
-  ///
-  /// Runs only when the user asks, refuses public or larger than /22 subnets, and never
-  /// starts monitoring by itself.
-  public func searchForAccessPoint() async {
-    if case .searching = accessPointSearch { return }
-    guard let network, !sleeping else {
-      accessPointSearch = .finished("Connect to Wi-Fi before searching for the AP.")
-      return
-    }
-    guard let interfaceAddress = environment.interfaceAddress(network.interface) else {
-      accessPointSearch = .finished(SubnetSweep.Refusal.invalidAddress.description)
-      return
-    }
-    let hosts: [String]
-    do {
-      hosts = try SubnetSweep.hosts(
-        address: interfaceAddress.address, netmask: interfaceAddress.netmask)
-    } catch {
-      accessPointSearch = .finished(error.description)
-      return
-    }
-    accessPointSearch = .searching(hosts: hosts.count)
-    await Self.ping(hosts, over: network.interface, with: probe)
-    networkChanged()
-    accessPointSearch = .finished(searchSummary(hosts: hosts.count))
-  }
-
-  private static func ping(_ hosts: [String], over interface: String, with probe: any LatencyProbe)
-    async
-  {
-    await withTaskGroup(of: Void.self) { group in
-      var pending = hosts.makeIterator()
-      for _ in 0..<32 {
-        guard let host = pending.next() else { break }
-        group.addTask { _ = await probe.measure(address: host, interface: interface) }
-      }
-      while await group.next() != nil {
-        guard let host = pending.next() else { continue }
-        group.addTask { _ = await probe.measure(address: host, interface: interface) }
-      }
-    }
-  }
-
-  private func searchSummary(hosts: Int) -> String {
-    let addresses = hosts == 1 ? "1 address" : "\(hosts) addresses"
-    return switch discovery?.accessPoint {
-    case .found(let address): "Found the AP at \(address) after pinging \(addresses)."
-    case .router: "The associated AP is the router itself, so there is no separate AP to compare."
-    case .unknown, nil:
-      "No device among \(addresses) matches the AP. Enter its address in Settings."
-    }
-  }
-
   /// Hides the current suggestion until the discovered addresses change.
   public func dismissSuggestion() {
     if let discovery { dismissed.insert(Self.key(discovery)) }
@@ -274,6 +228,7 @@ public final class MonitorController {
     {
       inFlight?.cancel()
       healthSince = uptime()
+      flushHistory()
     }
     reason = currentReason()
   }
@@ -299,6 +254,9 @@ public final class MonitorController {
       refresh()
       let previous = session.window.health
       session.accept(pair, generation: generation)
+      if generation == session.generation, session.window.samples.last == pair {
+        record(pair)
+      }
       if previous != session.window.health { healthSince = uptime() }
       reason = currentReason()
     }
@@ -349,6 +307,7 @@ public final class MonitorController {
 
   private func invalidate() {
     inFlight?.cancel()
+    flushHistory()
     session.reset()
     healthSince = uptime()
   }

@@ -11,6 +11,7 @@ import LinkWatchCore
 enum AppControl {
   enum Message: String {
     case reloadProfiles
+    case reloadHistory
     case pause
     case resume
     case dismissSuggestion
@@ -60,6 +61,7 @@ enum AppControl {
     let center = DistributedNotificationCenter.default()
     let handlers: [Message: @MainActor (Notification) -> Void] = [
       .reloadProfiles: { _ in controller.reloadProfiles() },
+      .reloadHistory: { _ in controller.reloadHistory() },
       .pause: { _ in controller.paused = true },
       .resume: { _ in controller.paused = false },
       .dismissSuggestion: { _ in controller.dismissSuggestion() },

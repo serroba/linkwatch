@@ -61,8 +61,9 @@ public struct MonitoringWindow: Sendable {
   public let capacity: Int
   public let historyCapacity: Int
 
-  public init(thresholds: Thresholds = Thresholds(), capacity: Int = 60, historyCapacity: Int = 450)
-  {
+  public init(
+    thresholds: Thresholds = Thresholds(), capacity: Int = 60, historyCapacity: Int = 1800
+  ) {
     self.thresholds = thresholds.isValid ? thresholds : Thresholds()
     self.capacity = max(5, capacity)
     self.historyCapacity = max(self.capacity, historyCapacity)

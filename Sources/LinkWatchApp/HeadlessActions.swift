@@ -11,9 +11,18 @@ extension Headless {
     case .pause: return await tellApp(.pause) { $0.paused }
     case .resume: return await tellApp(.resume) { !$0.paused }
     case .authorize: return await authorize()
+    default: return await manage(command)
+    }
+  }
+
+  /// Profile and history management, as in the Settings window.
+  private static func manage(_ command: HeadlessCommand) async -> Int32 {
+    switch command {
     case .listProfiles(let json): return await listProfiles(json: json)
     case .setProfile(let update): return await setProfile(update)
     case .removeProfile(let ssid): return await removeProfile(ssid)
+    case .history(let hours, let json): return history(hours: hours, json: json)
+    case .clearHistory: return clearHistory()
     default:
       write("LinkWatch: unsupported command\n", to: .standardError)
       return 64
@@ -153,5 +162,85 @@ extension Headless {
   private static func fail(_ message: String, code: Int32) -> Int32 {
     write("LinkWatch: \(message)\n", to: .standardError)
     return code
+  }
+}
+
+/// Reading and clearing the stored week of history from the command line.
+extension Headless {
+  static func history(hours: Int, json: Bool) -> Int32 {
+    let store = FileHistoryStore(directory: Monitor.supportDirectory)
+    let minutes: [MinuteSummary]
+    do {
+      minutes = try store.load(since: Date().addingTimeInterval(-Double(hours) * 3600))
+    } catch {
+      write(
+        "LinkWatch: history could not be read: \(error.localizedDescription)\n", to: .standardError)
+      return 1
+    }
+    if json {
+      emit(encodable: minutes, compact: false)
+      return 0
+    }
+    guard !minutes.isEmpty else {
+      write(
+        "No history in the last \(hours) h. Minutes are stored once a profiled network is monitored.\n"
+      )
+      return 0
+    }
+    write(HistoryTable.text(minutes))
+    return 0
+  }
+
+  static func clearHistory() -> Int32 {
+    do {
+      try FileHistoryStore(directory: Monitor.supportDirectory).clear()
+    } catch {
+      write(
+        "LinkWatch: history could not be cleared: \(error.localizedDescription)\n",
+        to: .standardError)
+      return 1
+    }
+    AppControl.post(.reloadHistory)
+    write("Cleared the stored history.\n")
+    return 0
+  }
+}
+
+/// Hourly rollups of minute summaries for terminal output.
+enum HistoryTable {
+  static func text(_ minutes: [MinuteSummary]) -> String {
+    let hours = Dictionary(grouping: minutes) { minute in
+      Calendar.current.dateInterval(of: .hour, for: minute.start)?.start ?? minute.start
+    }
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd HH:00"
+    var lines = [
+      "Hour              Samples  AP median/p95  loss   Router median/p95  loss   Alert minutes"
+    ]
+    for (hour, group) in hours.sorted(by: { $0.key < $1.key }) {
+      let samples = group.reduce(0) { $0 + $1.samples }
+      let alerts = group.filter { $0.worstHealth != "healthy" }.count
+      lines.append(
+        formatter.string(from: hour) + "  " + pad(String(samples), 7) + "  "
+          + target(group.map(\.accessPoint), samples: group.map(\.samples)) + "  "
+          + target(group.map(\.router), samples: group.map(\.samples)) + "     "
+          + "\(alerts)/\(group.count)")
+    }
+    return lines.joined(separator: "\n") + "\n"
+  }
+
+  /// Median of minute medians, worst minute p95, and sample-weighted loss.
+  private static func target(_ summaries: [TargetSummary], samples: [Int]) -> String {
+    let medians = summaries.compactMap(\.median).sorted()
+    let median = medians.isEmpty ? "—" : String(format: "%.1f", medians[medians.count / 2])
+    let p95 = summaries.compactMap(\.p95).max().map { String(format: "%.1f", $0) } ?? "—"
+    let total = samples.reduce(0, +)
+    let lost = zip(summaries, samples).reduce(0.0) { $0 + $1.0.loss * Double($1.1) }
+    let loss = total == 0 ? 0 : lost / Double(total) * 100
+    return pad("\(median)/\(p95) ms", 15) + "  " + pad(String(format: "%.0f%%", loss), 4)
+  }
+
+  private static func pad(_ text: String, _ width: Int) -> String {
+    text.count >= width ? text : String(repeating: " ", count: width - text.count) + text
   }
 }
