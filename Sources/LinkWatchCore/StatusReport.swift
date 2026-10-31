@@ -68,6 +68,8 @@ public struct StatusReport: Codable, Equatable, Sendable {
   /// Current download and upload rates in bits per second; nil before two readings.
   public var downloadBitsPerSecond: Double?
   public var uploadBitsPerSecond: Double?
+  /// Bytes moved in the last hour, today and the stored week.
+  public var usageTotals: UsageTotals
   /// The guided device test, when one is running or has a result.
   public var deviceTest: DeviceTestReport?
   public var weekMinutes: Int
@@ -114,6 +116,7 @@ public struct StatusReport: Codable, Equatable, Sendable {
     }
     downloadBitsPerSecond = controller.usage?.downloadBitsPerSecond
     uploadBitsPerSecond = controller.usage?.uploadBitsPerSecond
+    usageTotals = controller.usageTotals
     deviceTest = DeviceTestReport(controller: controller, now: now)
     weekMinutes = controller.week.minutes.count
     weekStart = controller.week.minutes.first.map { ISO8601DateFormatter().string(from: $0.start) }
@@ -206,6 +209,9 @@ extension StatusReport {
     lines.append(latencyText)
     lines.append("Internet:    \(internetText)")
     lines.append("Usage:       \(usageText)")
+    lines.append(
+      "Totals:      today \(usageTotals.today.summary) · last hour \(usageTotals.lastHour.summary)"
+        + " · 7 days \(usageTotals.week.summary)")
     lines.append("Signal:      " + (signal?.summary ?? "not measured"))
     if let deviceTest { lines.append("Device test: \(deviceTest.summary)") }
     lines.append(
@@ -312,6 +318,7 @@ extension StatusReport {
     try container.encode(accessPointSearch, forKey: .accessPointSearch)
     try container.encode(downloadBitsPerSecond, forKey: .downloadBitsPerSecond)
     try container.encode(uploadBitsPerSecond, forKey: .uploadBitsPerSecond)
+    try container.encode(usageTotals, forKey: .usageTotals)
     try container.encode(deviceTest, forKey: .deviceTest)
     try container.encode(weekMinutes, forKey: .weekMinutes)
     try container.encode(weekStart, forKey: .weekStart)

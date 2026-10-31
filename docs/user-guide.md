@@ -34,7 +34,9 @@ Click the icon to open the panel. From the top:
 - **Wi-Fi signal**: strength in dBm (closer to zero is stronger), how far above the
   background noise it is, the link speed and the channel. *Weak* means moving closer
   to the access point will help more than restarting anything.
-- **Usage**: how fast this Mac is downloading and uploading right now.
+- **Usage**: how fast this Mac is downloading and uploading right now, and how much
+  it has downloaded and uploaded today and over the last seven days. Totals count
+  only this Mac, on networks LinkWatch monitors, while it is running.
 - **The chart**: choose **1 h**, **24 h** or **7 d**. Red marks are minutes with a
   problem.
 - **Problems in the last 24 hours**: when each one happened, how long it lasted and

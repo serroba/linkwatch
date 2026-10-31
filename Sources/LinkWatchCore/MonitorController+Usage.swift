@@ -43,6 +43,12 @@ extension MonitorController {
     return delta
   }
 
+  /// Cumulative usage for the last hour, today and the stored week, including the minute
+  /// in progress.
+  public var usageTotals: UsageTotals {
+    UsageTotals(minutes: week.minutes, current: week.currentTraffic, now: now())
+  }
+
   /// Whether recent traffic is heavy enough to explain slow responses on this network.
   var isBusy: Bool {
     guard let ssid = session.profile?.ssid, let recent = recentRates.max() else { return false }

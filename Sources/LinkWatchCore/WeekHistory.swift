@@ -61,6 +61,9 @@ public struct WeekHistory: Sendable {
   private var pairs: [ProbePair] = []
   private var worst = 0
   private var traffic: TrafficCounters?
+
+  /// Bytes recorded so far in the minute in progress.
+  public var currentTraffic: TrafficCounters? { traffic }
   private var signals: [WiFiSignal] = []
 
   public init(minutes: [MinuteSummary] = []) {

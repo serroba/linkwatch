@@ -86,6 +86,12 @@ private struct DetailView: View {
         )
         .monospacedDigit().font(.caption)
       }
+      if monitor.session.profile != nil {
+        let totals = monitor.usageTotals
+        Text("Today \(totals.today.summary)   ·   7 days \(totals.week.summary)")
+          .monospacedDigit().font(.caption)
+          .help("Data this Mac moved on monitored networks while LinkWatch was running.")
+      }
       if let profile = monitor.session.profile {
         Text(profile.ssid).font(.headline)
         Text("AP \(profile.accessPoint) · Router \(profile.router)").font(.caption)

@@ -134,7 +134,9 @@ Each cycle reads the Wi-Fi interface's 64-bit byte counters from the kernel
 difference from the previous cycle gives the live download and upload rate, and
 minute summaries store bytes received and sent. Counters that go backwards, or a
 new session after a pause or network change, start a new baseline instead of
-reporting a spike. Only totals are read: no traffic is sent, and nothing about
+reporting a spike. Cumulative totals for the last hour, today (from local midnight)
+and the stored week add up the stored minutes and the minute in progress, so they
+survive restarts; time when LinkWatch was not running is not counted. Only totals are read: no traffic is sent, and nothing about
 applications or destinations is recorded. This measures what the Mac used, not
 the connection's capacity, so it is not a speed test.
 
