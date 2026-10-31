@@ -1,5 +1,7 @@
+import AppKit
 import Charts
 import Combine
+import Foundation
 import LinkWatchCore
 import SwiftUI
 
@@ -9,34 +11,62 @@ struct LinkWatchApp: App {
 
   var body: some Scene {
     MenuBarExtra {
-      DetailView(monitor: monitor)
+      DetailView(monitor: monitor.controller)
     } label: {
+      let controller = monitor.controller
       HStack(spacing: 4) {
-        Image(systemName: monitor.symbol).foregroundStyle(monitor.color)
-        Text("AP \(monitor.latencyText(monitor.accessPointLatency))")
+        Image(systemName: controller.displayState.symbol)
+          .foregroundStyle(controller.displayState.color)
+        Text("AP \(latencyText(controller.accessPointLatency))")
           .monospacedDigit().frame(width: 52, alignment: .trailing)
         Text("·")
-        Text("R \(monitor.latencyText(monitor.routerLatency)) ms")
+        Text("R \(latencyText(controller.routerLatency)) ms")
           .monospacedDigit().frame(width: 70, alignment: .leading)
       }
-      .accessibilityLabel("LinkWatch: \(monitor.reason)")
+      .accessibilityLabel("LinkWatch: \(controller.reason)")
     }
     .menuBarExtraStyle(.window)
     Window("LinkWatch Settings", id: "settings") {
-      ProfileSettings(monitor: monitor)
+      ProfileSettings(monitor: monitor.controller, environment: monitor.environment)
     }
     .defaultSize(width: 480, height: 620)
   }
 }
 
+private func latencyText(_ value: Double?) -> String {
+  value.map { String(format: "%.0f", $0) } ?? "—"
+}
+
+extension DisplayState {
+  fileprivate var color: Color {
+    switch self {
+    case .idle: .gray
+    case .healthy: .green
+    case .routerSlower: .red
+    case .bothSlow: .orange
+    case .unreachable: .purple
+    }
+  }
+
+  fileprivate var symbol: String {
+    switch self {
+    case .idle: "pause.circle.fill"
+    case .healthy: "checkmark.circle.fill"
+    case .routerSlower, .bothSlow: "exclamationmark.triangle.fill"
+    case .unreachable: "xmark.octagon.fill"
+    }
+  }
+}
+
 private struct DetailView: View {
-  @ObservedObject var monitor: Monitor
+  @Bindable var monitor: MonitorController
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Image(systemName: monitor.symbol).foregroundStyle(monitor.color)
+        Image(systemName: monitor.displayState.symbol)
+          .foregroundStyle(monitor.displayState.color)
         Text("LinkWatch").font(.headline)
         Spacer()
         Text("Every 2 seconds").font(.caption).foregroundStyle(.secondary)
@@ -63,9 +93,10 @@ private struct DetailView: View {
             monitor.session.window.routerLoss * 100))
         HistoryChart(history: monitor.session.window.history)
         if monitor.session.window.health != .healthy {
-          Text(
-            "Current alert for \(Int(ProcessInfo.processInfo.systemUptime - monitor.healthSince)) seconds"
-          ).font(.caption)
+          TimelineView(.periodic(from: .now, by: 1)) { _ in
+            let seconds = Int(ProcessInfo.processInfo.systemUptime - monitor.healthSince)
+            Text("Current alert for \(seconds) seconds").font(.caption)
+          }
         } else if let since = monitor.session.window.pendingSince,
           let latest = monitor.session.window.samples.last
         {
@@ -90,7 +121,7 @@ private struct DetailView: View {
   private func metric(_ title: String, value: Double?) -> some View {
     VStack(alignment: .leading) {
       Text(title).font(.caption).foregroundStyle(.secondary)
-      Text("\(monitor.latencyText(value)) ms").font(.title2).monospacedDigit()
+      Text("\(latencyText(value)) ms").font(.title2).monospacedDigit()
     }
   }
 }
@@ -145,7 +176,8 @@ private final class ProfileEditor: ObservableObject {
 }
 
 private struct ProfileSettings: View {
-  @ObservedObject var monitor: Monitor
+  let monitor: MonitorController
+  let environment: SystemEnvironment
   @StateObject private var editor = ProfileEditor()
 
   var body: some View {
@@ -154,7 +186,7 @@ private struct ProfileSettings: View {
         Text(
           "macOS requires Location permission to reveal the Wi-Fi name. LinkWatch never requests location coordinates."
         )
-        Button("Allow Wi-Fi identification") { monitor.requestPermission() }
+        Button("Allow Wi-Fi identification") { environment.requestPermission() }
         Text(monitor.network?.ssid ?? "Wi-Fi identity unavailable").foregroundStyle(.secondary)
       }
       Section("Selected networks") {
@@ -174,7 +206,11 @@ private struct ProfileSettings: View {
         TextField("Exact Wi-Fi name (SSID)", text: $editor.draft.ssid)
         Button("Use current Wi-Fi") {
           if let network = monitor.network { editor.draft.ssid = network.ssid }
-          if let router = monitor.suggestedRouter() { editor.draft.router = router }
+          if let network = monitor.network,
+            let router = environment.defaultRouter(for: network.interface)
+          {
+            editor.draft.router = router
+          }
         }
         .disabled(monitor.network == nil)
         TextField("Configured AP IPv4 address", text: $editor.draft.accessPoint)
