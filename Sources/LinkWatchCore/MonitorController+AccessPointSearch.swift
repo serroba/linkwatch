@@ -6,7 +6,7 @@ extension MonitorController {
   public var connectionPath: ConnectionPath? {
     guard let profile = session.profile else { return nil }
     return ConnectionPath(
-      profile: profile, discovered: discovery?.network == network ? discovery?.accessPoint : nil,
+      profile: profile, discovery: discovery?.network == network ? discovery : nil,
       evidence: session.window.evidence)
   }
 
@@ -14,6 +14,29 @@ extension MonitorController {
   public func detectPath() {
     needsDiscovery = true
     refresh()
+  }
+
+  /// Whether the Mac is behind an access point the profile does not know, so the panel can
+  /// offer to find it.
+  public var behindUnknownAccessPoint: Bool {
+    guard let profile = session.profile, profile.isSingleDevice, !profile.hotspot else {
+      return false
+    }
+    return connectionPath == .accessPoint
+  }
+
+  /// Saves a found access point into a profile that has none.
+  ///
+  /// Detection then works from then on without anyone accepting a suggestion. An existing
+  /// AP is never overwritten.
+  func rememberAccessPoint() {
+    guard let profile = session.profile, profile.accessPoint.isEmpty, !profile.hotspot,
+      discovery?.network == network, case .found(let address) = discovery?.accessPoint,
+      address != profile.router
+    else { return }
+    var updated = profile
+    updated.accessPoint = address
+    save(updated)
   }
 
   /// Whether the Mac is on the router's own Wi-Fi while the profile also has an access point.

@@ -28,10 +28,19 @@ public struct NetworkDiscovery: Equatable, Sendable {
   public let network: NetworkIdentity
   public let router: String?
   public let accessPoint: AccessPointDiscovery
+  /// True when the router's hardware address is known and the BSSID is not one of its
+  /// radios: the Mac is behind an access point even if that AP's address is unknown.
+  public let behindAccessPoint: Bool
 
   public init(network: NetworkIdentity, router: String?, neighbors: [NeighborEntry]) {
     self.network = network
-    self.router = router.flatMap { NetworkProfile.validAddress($0) ? $0 : nil }
+    let router = router.flatMap { NetworkProfile.validAddress($0) ? $0 : nil }
+    self.router = router
+    let routerHardware = neighbors.first {
+      $0.interface == network.interface && $0.address == router
+    }?.hardwareAddress
+    behindAccessPoint =
+      routerHardware.map { !HardwareAddress.isRadio(network.bssid, of: $0) } ?? false
     let candidates = Set(
       neighbors
         .filter {

@@ -97,7 +97,8 @@ LinkWatch only watches networks you approve.
    Wi-Fi, LinkWatch monitors the router alone. If there is a separate access point
    that was not found, click **Find AP**. It asks each address on your home network
    once, so the Mac learns which one is the access point, and only runs when you
-   click it. Or enter the access point's address in Settings.
+   click it. In Settings, **Use current Wi-Fi** shows the same **Find access point**
+   button when the address is not known yet, or type the address yourself.
 
    **Moving around the house.** Many homes have the router's own Wi-Fi in one room and
    an access point (for example behind powerline adapters) in another, with the same
@@ -106,8 +107,10 @@ LinkWatch only watches networks you approve.
    Behind the access point, advice about the powerline adapters applies to this Mac.
    On the router's Wi-Fi, a slow access point only shows as a note ("only devices
    using the access point are affected"), because this Mac does not use it there. If
-   you first set up the network on the router's Wi-Fi, LinkWatch offers to add the
-   access point the first time you join it.
+   you first set up the network on the router's Wi-Fi, the panel says **Connected
+   through an access point LinkWatch does not know yet** when you join the access point;
+   click **Find it** once and the access point is saved with the network. Or type its
+   address into Settings.
 4. Optionally, in Settings, name what connects the access point to the router, for
    example *"TP-Link powerline adapters"*. The advice then uses that name.
 

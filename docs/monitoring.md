@@ -235,8 +235,13 @@ stored minute records its path, and stored minutes on the router's Wi-Fi are jud
 the same way. A roam changes the network identity, so the monitoring window restarts
 and the two paths are never mixed. Profiles without an access point probe only the
 router and record its outcome for both targets. A network first joined on the router's radio is saved without
-an AP; joining its AP later offers to add it, and returning to the router's radio
-keeps it without suggesting anything. A profile whose AP is empty or equals the router
+an AP. When the router's hardware address is known and the BSSID is not one of its
+radios, the Mac is behind an access point even if its address is unknown: the path is
+`accessPoint` and the panel offers **Find it** (the Find AP search). As soon as
+discovery finds the AP, it is saved into a profile that has none (an existing AP is
+never overwritten; a different one is offered as an update), and returning to the
+router's radio keeps it without suggesting anything. Hotspot profiles always count as
+the router, since a phone's radio address need not resemble its LAN address. A profile whose AP is empty or equals the router
 is a single device, such as a phone hotspot or an all-in-one router. A network counts as a phone hotspot when
 macOS marks the path as expensive or the router is in the iPhone hotspot range
 172.20.10.0/28; then an unknown AP is taken to be the router, and the saved profile

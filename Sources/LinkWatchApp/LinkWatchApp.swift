@@ -261,6 +261,7 @@ private struct ProfileSettings: View {
           }
         }
         .disabled(monitor.network == nil)
+        FindAccessPointRow(monitor: monitor, accessPoint: $editor.draft.accessPoint)
         TextField("Access point IPv4 address (optional)", text: $editor.draft.accessPoint)
         TextField("Router IPv4 address", text: $editor.draft.router)
         Text(

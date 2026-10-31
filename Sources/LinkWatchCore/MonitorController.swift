@@ -266,7 +266,9 @@ public final class MonitorController {
       healthSince = uptime()
       resetDerivedState()
     }
+    // Hotspots first: a phone's network never gains a separate access point.
     rememberHotspot()
+    rememberAccessPoint()
     reason = currentReason()
     recordTransitions()
   }

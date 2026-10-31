@@ -83,7 +83,7 @@ private let house = [
 @Test func pathsFromLatencyNeedAClearDifference() {
   func path(_ accessPoint: Double, _ router: Double) -> ConnectionPath? {
     ConnectionPath(
-      profile: homeProfile, discovered: .unknown,
+      profile: homeProfile, discovery: nil,
       evidence: LinkEvidence(
         accessPoint: TargetEvidence(median: accessPoint, loss: 0),
         router: TargetEvidence(median: router, loss: 0), internet: nil))
@@ -94,7 +94,7 @@ private let house = [
   let single = NetworkProfile(ssid: "Home", accessPoint: "", router: "192.0.2.1")
   #expect(
     ConnectionPath(
-      profile: single, discovered: nil,
+      profile: single, discovery: nil,
       evidence: LinkEvidence(
         accessPoint: TargetEvidence(median: nil, loss: 1),
         router: TargetEvidence(median: nil, loss: 1), internet: nil)) == .router)
@@ -143,17 +143,13 @@ private let house = [
   #expect(harness.controller.profiles.first?.accessPoint.isEmpty == true)
   #expect(harness.controller.profiles.first?.accessPointText == "none")
 
+  // Joining the access point saves it with the network; nothing needs accepting.
   harness.environment.network = accessPointRadio
   harness.controller.refresh()
-  guard case .update(let current, let proposed) = harness.controller.suggestion else {
-    Issue.record("Expected an offer to add the access point")
-    return
-  }
-  #expect(current.accessPoint.isEmpty)
-  #expect(proposed.accessPoint == "192.0.2.2")
-  #expect(harness.controller.acceptSuggestion())
+  #expect(harness.controller.profiles.first?.accessPoint == "192.0.2.2")
+  #expect(harness.controller.suggestion == nil)
 
-  // Back in the living room the saved AP stays, unprobed, and nothing is suggested.
+  // Back in the living room the saved AP stays, still pinged, and nothing is suggested.
   harness.environment.network = routerRadio
   harness.controller.refresh()
   #expect(harness.controller.suggestion == nil)
@@ -177,4 +173,66 @@ private let house = [
   #expect(created?.isValid == true)
   var clear = ["--ssid", "Home", "--ap", "none"]
   #expect(try ProfileUpdate(parsing: &clear).applied(to: homeProfile)?.isSingleDevice == true)
+}
+
+/// Only the router is in the ARP cache, as on a laptop whose profile has no access point.
+private let routerOnly = [
+  NeighborEntry(address: "192.0.2.1", hardwareAddress: "00:00:5e:00:53:20", interface: "en0")
+]
+
+@MainActor
+@Test func aProfileWithoutAnAccessPointNoticesItIsBehindOneAndRemembersIt() {
+  let noAccessPoint = NetworkProfile(
+    ssid: "Home", accessPoint: "", router: "192.0.2.1", internetReferences: false)
+  let harness = Harness(profiles: [noAccessPoint])
+  harness.environment.router = "192.0.2.1"
+  harness.environment.neighborEntries = routerOnly
+  harness.environment.network = routerRadio
+  harness.controller.networkChanged()
+  #expect(harness.controller.connectionPath == .router)
+  #expect(!harness.controller.behindUnknownAccessPoint)
+
+  harness.environment.network = accessPointRadio
+  harness.controller.refresh()
+  #expect(harness.controller.connectionPath == .accessPoint)
+  #expect(harness.controller.behindUnknownAccessPoint)
+  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
+  #expect(report.text.contains("Path:        through an access point the profile does not know"))
+
+  // Find it fills the ARP cache; the AP is then saved with the network.
+  harness.environment.neighborEntries = house
+  harness.controller.detectPath()
+  #expect(harness.controller.profiles.first?.accessPoint == "192.0.2.2")
+  #expect(harness.store.saved?.first?.accessPoint == "192.0.2.2")
+  #expect(!harness.controller.behindUnknownAccessPoint)
+  #expect(harness.controller.connectionPath == .accessPoint)
+}
+
+@MainActor
+@Test func aSavedAccessPointIsNeverOverwrittenAutomatically() {
+  var other = homeProfile
+  other.accessPoint = "192.0.2.9"
+  let harness = Harness(profiles: [other])
+  harness.environment.router = "192.0.2.1"
+  harness.environment.neighborEntries = house
+  harness.environment.network = accessPointRadio
+  harness.controller.networkChanged()
+  #expect(harness.controller.profiles.first?.accessPoint == "192.0.2.9")
+  guard case .update(_, let proposed) = harness.controller.suggestion else {
+    Issue.record("Expected an offer to update the access point")
+    return
+  }
+  #expect(proposed.accessPoint == "192.0.2.2")
+}
+
+@MainActor
+@Test func hotspotsAreTheRouterWhateverTheirRadioLooksLike() {
+  let phone = NetworkProfile(ssid: "Home", accessPoint: "", router: "192.0.2.1", hotspot: true)
+  let harness = Harness(profiles: [phone])
+  harness.environment.router = "192.0.2.1"
+  harness.environment.neighborEntries = routerOnly
+  harness.environment.network = accessPointRadio
+  harness.controller.networkChanged()
+  #expect(harness.controller.connectionPath == .router)
+  #expect(!harness.controller.behindUnknownAccessPoint)
 }
