@@ -33,6 +33,7 @@ final class Monitor: ObservableObject {
   static func forInterface() -> Monitor {
     let monitor = Monitor()
     monitor.startLoops()
+    LoginItem.applyPreference()
     return monitor
   }
 

@@ -50,6 +50,7 @@ running app immediately.
 | `profile remove NAME` | Settings › Remove |
 | `history clear` | Settings › **Clear history…** |
 | `authorize` | **Allow Wi-Fi identification**: asks the running app to show the Location prompt |
+| `open-at-login [on\|off]` | Settings › **Open LinkWatch at login**; without an argument, shows the current state |
 
 `profile set` options; omitted values keep their current setting, and a new profile
 needs `--ap` and `--router`:

@@ -23,6 +23,7 @@ extension Headless {
     case .removeProfile(let ssid): return await removeProfile(ssid)
     case .history(let hours, let json): return history(hours: hours, json: json)
     case .clearHistory: return clearHistory()
+    case .openAtLogin(let setting): return openAtLogin(setting)
     case .incidents(let days, let json): return incidents(days: days, json: json)
     case .diagnose(let hours, let json): return await diagnose(hours: hours, json: json)
     default:
@@ -241,7 +242,8 @@ extension Headless {
     let report = DiagnoseReport(
       status: status, appRunning: live != nil, minutes: minutes, profiles: profiles,
       hours: hours, now: now, primaryInterface: SystemEnvironment().primaryInterface,
-      appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
+      appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+      opensAtLogin: LoginItem.isEnabled)
     if json {
       emit(encodable: report, compact: false)
     } else {
@@ -250,6 +252,21 @@ extension Headless {
       ) { first, _ in first }
       write(report.text(bridgeNames: bridges))
     }
+    return 0
+  }
+
+  static func openAtLogin(_ setting: ProfileUpdate.Switch?) -> Int32 {
+    if let setting {
+      do {
+        try LoginItem.set(setting == .enabled)
+      } catch {
+        write(
+          "LinkWatch: could not change the login item: \(error.localizedDescription)\n",
+          to: .standardError)
+        return 1
+      }
+    }
+    write("Open at login: \(LoginItem.description)\n")
     return 0
   }
 

@@ -33,6 +33,8 @@ happened and which link failed, on the Mac where it happened.
   project skill so coding agents answer "what's going on with my network?" from the
   evidence.
 - **Releases** from version tags with a checksum-verifying installer.
+- **Survives restarts**: opens at login, and settings and the week of history are
+  kept on disk; the hour chart fills in from stored minutes after a restart.
 
 ## Next
 
@@ -56,7 +58,7 @@ happened and which link failed, on the Mac where it happened.
    minutes later, for example "router latency 85 → 4 ms".
 7. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
    latency under load, to decide whether to move or replace equipment.
-8. **App icon and start at login** (asks for Login Items approval).
+8. **App icon.**
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.

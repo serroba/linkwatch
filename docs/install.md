@@ -31,8 +31,9 @@ for confirmation: Control-click the app, choose **Open**, then **Open** again.
 
 ## First run
 
-LinkWatch appears in the menu bar, not the Dock. It needs two permissions, both
-granted once:
+LinkWatch appears in the menu bar, not the Dock, and opens at login so monitoring
+resumes after a restart (switch this off in Settings). It needs two permissions,
+both granted once:
 
 1. **Location**: click the menu bar icon → **Settings…** → **Allow Wi-Fi
    identification**, then allow the prompt. macOS uses Location to reveal the Wi-Fi
@@ -55,6 +56,7 @@ notes say which applies.
 ## Uninstall
 
 ```sh
+/Applications/LinkWatch.app/Contents/MacOS/LinkWatch open-at-login off   # stop opening at login
 osascript -e 'quit app "LinkWatch"'
 rm -rf /Applications/LinkWatch.app
 rm -rf ~/Library/Application\ Support/io.github.serroba.LinkWatch   # stored history
