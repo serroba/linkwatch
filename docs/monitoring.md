@@ -231,7 +231,10 @@ keeps it without suggesting anything. A profile whose AP is empty or equals the 
 is a single device, such as a phone hotspot or an all-in-one router. A network counts as a phone hotspot when
 macOS marks the path as expensive or the router is in the iPhone hotspot range
 172.20.10.0/28; then an unknown AP is taken to be the router, and the saved profile
-is flagged `hotspot`. Hotspot profiles, and any network on an expensive path, ping
+is flagged `hotspot`. A profile saved earlier (by hand, from the command line or
+before detection existed) is flagged the first time its network is recognised as a
+hotspot; the flag stays with the profile, so the wording and data saving follow the
+network name even when the expensive-path signal is briefly missing. Hotspot profiles, and any network on an expensive path, ping
 the internet references on every fifth cycle (10 s) instead of every cycle. Their
 advice names the phone: a poor or spiky AP link or weak signal becomes "the
 connection between the Mac and the phone", and internet trouble becomes the phone's

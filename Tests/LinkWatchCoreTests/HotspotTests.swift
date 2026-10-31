@@ -117,3 +117,22 @@ private let phoneRouter = "172.20.10.1"
   let other = NetworkDiscovery(network: homeNetwork, router: "172.20.10.16", neighbors: [])
   #expect(!other.looksLikeIPhoneHotspot)
 }
+
+@MainActor
+@Test func savedNetworksAreRememberedAsHotspotsOnceRecognised() {
+  let phone = NetworkProfile(
+    ssid: "Home", accessPoint: "", router: "192.0.2.1", internetReferences: false)
+  let harness = Harness(profiles: [phone])
+  harness.environment.router = "192.0.2.1"
+  harness.controller.refresh()
+  #expect(harness.controller.profiles.first?.hotspot == false)
+  harness.environment.isExpensivePath = true
+  harness.controller.networkChanged()
+  #expect(harness.controller.profiles.first?.hotspot == true)
+  #expect(harness.store.saved?.first?.hotspot == true)
+  // Remembered with the network: phone wording stays after the path flag goes away.
+  harness.environment.isExpensivePath = false
+  harness.controller.networkChanged()
+  #expect(harness.controller.session.profile?.hotspot == true)
+  #expect(harness.controller.defaultRestartDevice == "phone")
+}

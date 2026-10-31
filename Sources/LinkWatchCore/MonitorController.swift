@@ -264,6 +264,7 @@ public final class MonitorController {
       healthSince = uptime()
       resetDerivedState()
     }
+    rememberHotspot()
     reason = currentReason()
     recordTransitions()
   }

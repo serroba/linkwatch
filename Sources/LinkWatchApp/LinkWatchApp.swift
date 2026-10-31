@@ -274,7 +274,7 @@ private struct ProfileSettings: View {
       Section("Phone hotspot") {
         Toggle("This network is a phone's personal hotspot", isOn: $editor.draft.hotspot)
         Text(
-          "Advice then names the phone, and internet pings run every 10 seconds instead of every 2 to save mobile data. The AP and router can be the same address."
+          "Set automatically the first time LinkWatch recognises this network as a phone hotspot, and kept with the network name. Turn it on yourself only for a phone LinkWatch does not recognise. Advice then names the phone, and internet pings run every 10 seconds instead of every 2 to save mobile data."
         )
         .font(.caption).foregroundStyle(.secondary)
       }

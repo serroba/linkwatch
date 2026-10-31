@@ -114,8 +114,10 @@ LinkWatch only watches networks you approve.
 router. Advice then talks about the phone, for example *"Move the phone where
 reception is better, for example near a window"* or *"Bring the Mac and the phone
 closer together"*, and the internet pings run every ten seconds to save mobile data.
-If a hotspot is not recognised, turn on **This network is a phone's personal
-hotspot** in Settings. Home routers with built-in Wi-Fi and no separate access point
+This is remembered with the network's name, so you never switch anything when you
+tether: a network saved earlier is marked as a hotspot the first time LinkWatch
+recognises it. Only if your phone is never recognised, turn on **This network is a
+phone's personal hotspot** in Settings once. Home routers with built-in Wi-Fi and no separate access point
 work the same way, with ordinary wording.
 
 If a network's router or access point changes later, LinkWatch offers to **Update
