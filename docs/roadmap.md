@@ -52,6 +52,8 @@ happened and which link failed, on the Mac where it happened.
 - **Weekly summary** (`summary`, and the top of exported reports): problems per part
   of the connection, busiest hours, latency under heavy use, restarts, and advice on
   what to move or replace.
+- **App icon**, drawn by `scripts/make_icon.swift` at build time, so the repository
+  holds no binary artwork.
 
 ## Next
 
@@ -60,7 +62,6 @@ happened and which link failed, on the Mac where it happened.
 2. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes
    (asks for Notifications permission).
-3. **App icon.**
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.

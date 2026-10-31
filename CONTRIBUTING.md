@@ -95,6 +95,9 @@ asked last, so the development build silently stops monitoring. Test installs on
 another Mac or user account, then re-grant permissions from the development build's
 Settings if it happened.
 
+`build_app.sh` draws the app icon with `scripts/make_icon.swift` and converts it with
+`iconutil`; change the drawing there rather than adding image files.
+
 ## Documentation
 
 Behaviour changes update the documents that describe them in the same pull request:

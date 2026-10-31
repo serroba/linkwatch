@@ -3,6 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleExecutable</key><string>LinkWatch</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleIdentifier</key><string>io.github.serroba.LinkWatch</string>
   <key>CFBundleName</key><string>LinkWatch</string>
   <key>CFBundlePackageType</key><string>APPL</string>
