@@ -10,7 +10,9 @@ Degradation starts when the median difference strictly exceeds 20 ms, or both
 medians strictly exceed 30 ms. The condition must remain present at each sample
 for at least 10 elapsed seconds. A gap longer than five seconds resets the pending
 timer. Both-slow takes precedence over a difference alert. Failures immediately
-produce an explicit unreachable state.
+produce an explicit unreachable state. When both targets reply again, the
+unreachable state clears at once and the previous assessment resumes, so a single
+lost reply neither hides nor restarts an active alert.
 
 Recovery requires a difference below 10 ms and both medians below 20 ms for six
 seconds. Values on recovery boundaries retain the current alert. These defaults
