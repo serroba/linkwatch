@@ -94,6 +94,18 @@ with the measurements. Only changes are recorded, never repeated state. `diagnos
 lists recent events and explains each unmonitored gap with the last event before it
 and the first after it, allowing a minute either side.
 
+## Marked activities
+
+`diagnose` compares the minutes touched by each mark label (case-insensitive) with
+all other monitored minutes in the period. A mark touches the minute it falls in and
+the next one, since a motor run or a restart can straddle a minute boundary. For
+each side it reports the median of the minutes' 95th percentiles per link, the
+router loss and the share of problem minutes. With at least three marks, the first
+link whose typical spikes grow by 50 ms or more and at least double (or, for the
+router, whose loss grows by ten points) is named as most likely affected; otherwise
+it says there is no clear effect. Correlation is evidence, not proof: repeat the
+activity at different times to rule out coincidence.
+
 ## Usage
 
 Each cycle reads the Wi-Fi interface's 64-bit byte counters from the kernel

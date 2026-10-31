@@ -39,28 +39,82 @@ upload rates, a chart of the last hour, day or week, and the problems of the las
 
 ## Install
 
-On macOS 14 or later:
+LinkWatch runs on macOS 14 (Sonoma) or later. Open **Terminal** and run:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/serroba/linkwatch/main/scripts/install.sh | bash
 ```
 
-Run it again to update. See [installing LinkWatch](docs/install.md) for reviewing
-the script first, manual installation, first-run permissions and uninstalling.
+This downloads the latest [release](https://github.com/serroba/linkwatch/releases),
+checks it against its published checksum, installs `LinkWatch.app` in
+`/Applications` and opens it. It needs no administrator password. Run the same
+command again at any time to update. To read the script before running it, or to
+install by hand, see [installing LinkWatch](docs/install.md).
+
+## Getting started
+
+1. **Find the icon.** LinkWatch lives in the menu bar at the top of the screen, not
+   in the Dock. It opens automatically at login from now on.
+2. **Allow Wi-Fi identification.** Click the icon → **Settings…** → **Allow Wi-Fi
+   identification** → **Allow**. macOS only reveals the Wi-Fi name to apps with
+   Location permission; LinkWatch never reads where you are.
+3. **Monitor your network.** Back in the panel, LinkWatch suggests your current
+   Wi-Fi network with its router and, if found, its access point. Click **Monitor
+   this network**. If the access point is missing, click **Find AP**, or enter its
+   address in Settings.
+4. **Allow Local Network access if asked.** If the icon turns purple and says the
+   router is not answering, open **System Settings › Privacy & Security › Local
+   Network** and switch on **LinkWatch**.
+5. **Optionally name the link** between your access point and router in Settings,
+   for example *TP-Link powerline adapters*, so the advice can say "Restart the
+   TP-Link powerline adapters".
+
+After an update, if the icon is grey or purple, repeat steps 2 and 4: releases are
+not yet signed by Apple, so macOS may ask again.
+
+## Everyday use
+
+- **Glance at the icon.** Its colour and shape say how things are (see the table
+  above); you do not need to open anything.
+- **Open the panel** for the advice, latency per link, download and upload, the
+  chart for the last hour, day or week, and the problems of the last 24 hours.
+- **Mark what you are doing** when you suspect something at home affects the
+  connection: type it into **What just happened?** (for example *desk moved*) and
+  click **Mark**. After three or more marks, the diagnosis says whether the
+  connection got worse around them and which link was affected.
+- **Share a report** when someone else looks after the network: click **Export
+  report…**. LinkWatch saves a folder with the last week's diagnosis and
+  measurements and shows it in Finder, ready to send by AirDrop or Messages. It
+  contains your network name and local addresses, so share it only with people you
+  trust.
+- **Pause** monitoring from the panel when you do not want any measurements.
+
+The [user guide](docs/user-guide.md) explains every part of the panel and answers
+common questions.
 
 ## Ask "what's going on with my network?"
 
-Everything in the app is also available from the command line, as text or JSON:
+Everything in the app is also available from the command line, as text or JSON.
+From a clone of this repository (or with the app installed in `/Applications`):
 
 ```sh
-scripts/linkwatch diagnose --hours 24   # verdict, coverage, incidents with evidence, hourly history
+scripts/linkwatch diagnose --hours 24   # the answer first, then the evidence
 scripts/linkwatch incidents --days 7    # when it broke, for how long, the likely cause
+scripts/linkwatch mark desk moved       # note what you are doing now
+scripts/linkwatch export --redact       # a shareable report without names or addresses
 ```
 
 In this repository, coding agents such as Claude Code answer that question from the
 recorded evidence using the
-[`diagnose-network` skill](.claude/skills/diagnose-network/SKILL.md). The
-[command-line reference](docs/cli.md) lists every command.
+[`diagnose-network` skill](.claude/skills/diagnose-network/SKILL.md), including from
+a report exported on another Mac. The [command-line reference](docs/cli.md) lists
+every command.
+
+## Updating and uninstalling
+
+Run the install command again to update; it quits LinkWatch, replaces it and opens
+the new version. To uninstall, follow the steps in
+[installing LinkWatch](docs/install.md#uninstall).
 
 ## Privacy
 

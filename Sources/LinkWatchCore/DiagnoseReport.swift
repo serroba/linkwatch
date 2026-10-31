@@ -30,6 +30,8 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
   public var hourly: [HourSummary]
   /// App and system events in the period, oldest first.
   public var events: [AppEvent]
+  /// How link quality around each marked activity compares with the rest of the period.
+  public var markEffects: [MarkEffect]
   public var notes: [String]
 
   public static let minimumGapMinutes = 10
@@ -55,6 +57,7 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
     let windowEvents = events.filter { $0.time >= since && $0.time <= now }
       .sorted { $0.time < $1.time }
     self.events = windowEvents
+    markEffects = MarkEffect.effects(events: windowEvents, minutes: window, profiles: profiles)
     gaps = Self.gaps(recorded: recorded, since: since, now: now).map { gap in
       var annotated = gap
       // The cause usually lands inside the first missing minute, and the recovery inside
@@ -146,13 +149,7 @@ extension DiagnoseReport {
       String(
         format: "Coverage: %.0f%% of the period monitored", coverage * 100)
         + (gaps.isEmpty ? "" : "; gaps:"))
-    for gap in gaps {
-      let minutes = Int(gap.end.timeIntervalSince(gap.start) / 60)
-      var context = [gap.before.map { "after \($0)" }, gap.after.map { "until \($0)" }]
-        .compactMap { $0 }.joined(separator: ", ")
-      if !context.isEmpty { context = " (" + context + ")" }
-      lines.append("  \(time.string(from: gap.start)) for \(minutes) min\(context)")
-    }
+    lines += gapLines(time)
     lines.append("")
     lines.append("Incidents: \(incidents.count)")
     for incident in incidents.reversed() {
@@ -166,6 +163,36 @@ extension DiagnoseReport {
       lines.append("Hourly")
       lines += HistoryRollup.table(hourly).split(separator: "\n").map { "  " + $0 }
     }
+    if !markEffects.isEmpty {
+      lines.append("")
+      lines.append("Marked activities")
+      for effect in markEffects { lines += Self.describe(effect) }
+    }
+    lines += eventLines(time)
+    if !notes.isEmpty {
+      lines.append("")
+      lines.append("Notes")
+      lines += notes.map { "  - " + $0 }
+    }
+    return lines.joined(separator: "\n") + "\n"
+  }
+}
+
+extension DiagnoseReport {
+  private func gapLines(_ time: DateFormatter) -> [String] {
+    var lines: [String] = []
+    for gap in gaps {
+      let minutes = Int(gap.end.timeIntervalSince(gap.start) / 60)
+      var context = [gap.before.map { "after \($0)" }, gap.after.map { "until \($0)" }]
+        .compactMap { $0 }.joined(separator: ", ")
+      if !context.isEmpty { context = " (" + context + ")" }
+      lines.append("  \(time.string(from: gap.start)) for \(minutes) min\(context)")
+    }
+    return lines
+  }
+
+  private func eventLines(_ time: DateFormatter) -> [String] {
+    var lines: [String] = []
     if !events.isEmpty {
       lines.append("")
       lines.append("Events (latest \(min(events.count, Self.textEventLimit)) of \(events.count))")
@@ -173,12 +200,24 @@ extension DiagnoseReport {
         "  \(time.string(from: $0.time))  \($0.summary)"
       }
     }
-    if !notes.isEmpty {
-      lines.append("")
-      lines.append("Notes")
-      lines += notes.map { "  - " + $0 }
-    }
-    return lines.joined(separator: "\n") + "\n"
+    return lines
+  }
+
+  fileprivate static func describe(_ effect: MarkEffect) -> [String] {
+    func spikes(_ value: Double?) -> String { value.map { String(format: "%.0f ms", $0) } ?? "—" }
+    let after = effect.after
+    let baseline = effect.baseline
+    return [
+      "  \"\(effect.label)\" × \(effect.occurrences): \(effect.conclusion)",
+      "    spikes (typical p95) after → otherwise: AP \(spikes(after.accessPointP95)) → "
+        + "\(spikes(baseline.accessPointP95)) · router \(spikes(after.routerP95)) → "
+        + "\(spikes(baseline.routerP95)) · internet \(spikes(after.internetP95)) → "
+        + "\(spikes(baseline.internetP95))",
+      String(
+        format: "    problem minutes %.0f%% → %.0f%%, router loss %.0f%% → %.0f%%",
+        after.problemShare * 100, baseline.problemShare * 100, after.routerLoss * 100,
+        baseline.routerLoss * 100),
+    ]
   }
 }
 

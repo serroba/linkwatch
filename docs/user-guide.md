@@ -44,8 +44,12 @@ If you suspect something at home affects the connection (an electric desk, a
 microwave, a heater), type what you are doing into **What just happened?** in the
 panel and click **Mark** each time you use it. The marks are saved with the
 measurements, so whoever looks at the data later can see whether problems follow
-them. Powerline adapters are particularly sensitive to electrical noise from motors
-and power supplies.
+them. After three or more marks with the same words, the diagnosis says whether the
+connection got worse around them and which link was affected. Powerline adapters
+are particularly sensitive to electrical noise from motors and power supplies; if
+the desk turns out to disturb them, plug the adapters straight into a wall socket,
+plug the desk into another circuit or into an adapter's filtered socket, or replace
+the powerline link with a cable.
 
 ## Setting up a network
 
