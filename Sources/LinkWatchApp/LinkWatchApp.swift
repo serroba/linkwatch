@@ -37,24 +37,6 @@ private func latencyText(_ value: Double?) -> String {
   value.map { String(format: "%.0f", $0) } ?? "—"
 }
 
-/// The span shown by the panel's history chart.
-private enum ChartRange: String, CaseIterable, Identifiable {
-  case hour = "1 h"
-  case day = "24 h"
-  case week = "7 d"
-
-  var id: Self { self }
-  var seconds: TimeInterval { self == .day ? 86_400 : 604_800 }
-}
-
-@MainActor
-private final class DetailOptions: ObservableObject {
-  @Published var range = ChartRange.hour
-  @Published var exportMessage: String?
-  @Published var markText = ""
-  @Published var markMessage: String?
-}
-
 private struct DetailView: View {
   @Bindable var monitor: MonitorController
   @StateObject private var options = DetailOptions()
@@ -150,6 +132,7 @@ private struct DetailView: View {
       if let message = options.markMessage {
         Text(message).font(.caption2).foregroundStyle(.secondary)
       }
+      DeviceTestView(monitor: monitor, device: $options.testDevice)
       Divider()
       Toggle("Pause monitoring", isOn: $monitor.paused)
       HStack {

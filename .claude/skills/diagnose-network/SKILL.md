@@ -41,7 +41,10 @@ sleep and wake, Wi-Fi changes, permission changes, pauses, verdict changes and
 carries `before` and `after` events) and to test hypotheses: compare the minutes
 right after each mark with the rest. `markEffects` already does this per label:
 typical spikes per link after the marks versus otherwise, problem-minute share and a
-cautious conclusion (it needs three or more marks).
+cautious conclusion (it needs three or more marks). `deviceTest` events record
+guided device tests (`started`, `on`, `off`, then the conclusion), which compare 30
+seconds as usual, on and off; suggest one (`scripts/linkwatch test-device NAME`, the
+user must operate the device) when a specific device is suspected.
 
 ## 2. Check the data can answer the question
 

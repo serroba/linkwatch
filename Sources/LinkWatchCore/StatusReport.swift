@@ -66,6 +66,8 @@ public struct StatusReport: Codable, Equatable, Sendable {
   /// Current download and upload rates in bits per second; nil before two readings.
   public var downloadBitsPerSecond: Double?
   public var uploadBitsPerSecond: Double?
+  /// The guided device test, when one is running or has a result.
+  public var deviceTest: DeviceTestReport?
   public var weekMinutes: Int
   /// ISO 8601 start of the oldest stored minute.
   public var weekStart: String?
@@ -109,6 +111,7 @@ public struct StatusReport: Codable, Equatable, Sendable {
     }
     downloadBitsPerSecond = controller.usage?.downloadBitsPerSecond
     uploadBitsPerSecond = controller.usage?.uploadBitsPerSecond
+    deviceTest = DeviceTestReport(controller: controller, now: now)
     weekMinutes = controller.week.minutes.count
     weekStart = controller.week.minutes.first.map { ISO8601DateFormatter().string(from: $0.start) }
     historyError = controller.historyError
@@ -200,6 +203,7 @@ extension StatusReport {
     lines.append(latencyText)
     lines.append("Internet:    \(internetText)")
     lines.append("Usage:       \(usageText)")
+    if let deviceTest { lines.append("Device test: \(deviceTest.summary)") }
     lines.append(
       String(
         format: "Loss:        AP %.0f%% · Router %.0f%% over %d samples",
@@ -303,6 +307,7 @@ extension StatusReport {
     try container.encode(accessPointSearch, forKey: .accessPointSearch)
     try container.encode(downloadBitsPerSecond, forKey: .downloadBitsPerSecond)
     try container.encode(uploadBitsPerSecond, forKey: .uploadBitsPerSecond)
+    try container.encode(deviceTest, forKey: .deviceTest)
     try container.encode(weekMinutes, forKey: .weekMinutes)
     try container.encode(weekStart, forKey: .weekStart)
     try container.encode(historyError, forKey: .historyError)

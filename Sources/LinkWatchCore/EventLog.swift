@@ -23,6 +23,8 @@ public struct AppEvent: Codable, Equatable, Sendable {
     case historyCleared
     /// A person noted what they were doing, such as "desk moved", to correlate with the data.
     case marked
+    /// A guided device test started, changed phase, finished or was cancelled.
+    case deviceTest
   }
 
   /// Turns free text into a mark label: one line, trimmed, at most 60 characters.

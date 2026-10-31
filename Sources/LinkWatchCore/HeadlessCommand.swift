@@ -21,6 +21,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case export(days: Int, directory: String?, redact: Bool)
   case events(hours: Int, json: Bool)
   case mark(String)
+  case testDevice(String)
   case help
 
   public struct UsageError: Error, Equatable, CustomStringConvertible {
@@ -60,6 +61,8 @@ public enum HeadlessCommand: Equatable, Sendable {
       pause | resume         Pause or resume monitoring in the running app.
       mark LABEL             Note what you are doing now, such as "desk moved", so incidents
                              and reports show it next to the measurements.
+      test-device NAME       A guided 90-second test: 30 s as usual, 30 s with the device on,
+                             30 s off, then which link (if any) it disturbs. Follow the prompts.
       profile list           List saved profiles.
       profile set --ssid NAME [--ap ADDRESS] [--router ADDRESS]
                   [--difference MS] [--recovery-difference MS] [--slow MS]
@@ -121,10 +124,20 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "history": try history(options, json: json)
     case "incidents": try incidents(options, json: json)
     case "diagnose": try diagnose(options, json: json)
+    case "events": try events(options, json: json)
+    default: try withOperands(name, options)
+    }
+  }
+
+  /// Commands whose arguments are a label, a setting or export options.
+  private static func withOperands(_ name: String, _ options: [String]) throws(UsageError)
+    -> HeadlessCommand?
+  {
+    switch name {
     case "open-at-login": try openAtLogin(options)
     case "export": try export(options)
-    case "events": try events(options, json: json)
     case "mark": try mark(options)
+    case "test-device": try testDevice(options)
     default: nil
     }
   }

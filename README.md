@@ -82,6 +82,9 @@ not yet signed by Apple, so macOS may ask again.
   connection: type it into **What just happened?** (for example *desk moved*) and
   click **Mark**. After three or more marks, the diagnosis says whether the
   connection got worse around them and which link was affected.
+- **Test a suspect device** in 90 seconds: type its name (for example *desk*) next to
+  **Test** and follow the prompts: 30 seconds as usual, 30 seconds with it on (or
+  moving), 30 seconds off. LinkWatch then says which link, if any, it disturbs.
 - **Share a report** when someone else looks after the network: click **Export
   report…**. LinkWatch saves a folder with the last week's diagnosis and
   measurements and shows it in Finder, ready to send by AirDrop or Messages. It
@@ -101,6 +104,7 @@ From a clone of this repository (or with the app installed in `/Applications`):
 scripts/linkwatch diagnose --hours 24   # the answer first, then the evidence
 scripts/linkwatch incidents --days 7    # when it broke, for how long, the likely cause
 scripts/linkwatch mark desk moved       # note what you are doing now
+scripts/linkwatch test-device desk      # guided 90-second test with prompts
 scripts/linkwatch export --redact       # a shareable report without names or addresses
 ```
 

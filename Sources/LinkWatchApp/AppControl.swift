@@ -18,6 +18,7 @@ enum AppControl {
     case requestPermission
     case reportStatus
     case mark
+    case startDeviceTest
 
     var name: Notification.Name { Notification.Name("io.github.serroba.LinkWatch.\(rawValue)") }
   }
@@ -73,6 +74,11 @@ enum AppControl {
       .requestPermission: { _ in environment.requestPermission() },
       .mark: { notification in
         if let label = notification.userInfo?[labelKey] as? String { controller.mark(label) }
+      },
+      .startDeviceTest: { notification in
+        if let label = notification.userInfo?[labelKey] as? String {
+          controller.startDeviceTest(label)
+        }
       },
       .reportStatus: { notification in
         guard let path = notification.userInfo?[replyKey] as? String else { return }

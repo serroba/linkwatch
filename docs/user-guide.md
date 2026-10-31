@@ -51,6 +51,16 @@ the desk turns out to disturb them, plug the adapters straight into a wall socke
 plug the desk into another circuit or into an adapter's filtered socket, or replace
 the powerline link with a cable.
 
+## Testing a device
+
+For a quick answer, type the device's name (for example *desk*) next to **Test** in
+the panel and click it. Follow the prompts: leave it off for 30 seconds, turn it on
+(or keep the desk moving) for 30 seconds, then turn it off for 30 seconds. LinkWatch
+compares the three and says, for example, *"The desk most likely disturbs the link
+between the access point and the router, such as powerline adapters. It recovered
+once it was off."* Run it two or three times to be sure; pausing or a network change
+cancels it.
+
 ## Setting up a network
 
 LinkWatch only watches networks you approve.
