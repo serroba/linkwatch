@@ -27,7 +27,7 @@ private func message(address: [UInt8], hardware: [UInt8], interface: UInt32) -> 
   let complete = message(
     address: [192, 0, 2, 1], hardware: [0, 0, 0x5e, 0, 0x53, 0x0a], interface: loopback)
   let incomplete = message(address: [192, 0, 2, 2], hardware: [], interface: loopback)
-  let entries = NeighborTable.parse(complete + incomplete + complete.prefix(10))
+  let entries = NeighborTable.parse(complete + incomplete + Array(complete.prefix(10)))
   #expect(
     entries == [
       NeighborEntry(address: "192.0.2.1", hardwareAddress: "00:00:5e:00:53:0a", interface: "lo0")
