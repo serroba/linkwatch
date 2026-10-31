@@ -38,10 +38,14 @@ public struct LinkEvidence: Equatable, Sendable {
     self.busy = busy
   }
 
-  /// Evidence for a stored minute; `peakBitsPerSecond` is the busiest minute on that network.
+  /// Evidence for a stored minute.
+  ///
+  /// `peakBitsPerSecond` is the busiest minute on that network. On the router's own Wi-Fi
+  /// the router was the first hop, so it stands in for the access point.
   public init(_ minute: MinuteSummary, peakBitsPerSecond: Double = 0) {
+    let firstHop = minute.path == .router ? minute.router : minute.accessPoint
     accessPoint = TargetEvidence(
-      median: minute.accessPoint.median, loss: minute.accessPoint.loss, p95: minute.accessPoint.p95)
+      median: firstHop.median, loss: firstHop.loss, p95: firstHop.p95)
     router = TargetEvidence(
       median: minute.router.median, loss: minute.router.loss, p95: minute.router.p95)
     internet = minute.internet.map { TargetEvidence(median: $0.median, loss: $0.loss, p95: $0.p95) }

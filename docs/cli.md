@@ -45,6 +45,7 @@ running app immediately.
 |---|---|
 | `accept` | **Monitor this network** or **Update profile** |
 | `dismiss` | **Not now** |
+| `detect` | **Detect again**: rechecks whether this Mac is connected through the access point or the router's own Wi-Fi, then prints the status; sends no traffic |
 | `find-ap` | **Find AP**: pings each address of a private Wi-Fi subnet of /22 or smaller once |
 | `pause`, `resume` | **Pause monitoring** |
 | `test-device NAME` | **Test**: a guided 90-second test in the running app; prints each instruction as its phase starts, then the conclusion and per-phase spikes and loss |

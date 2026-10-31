@@ -40,7 +40,7 @@ extension MonitorController {
     guard let ssid = session.profile?.ssid else { return }
     if let summary = week.record(
       pair, health: session.window.health, ssid: ssid, at: now(), traffic: traffic,
-      signal: signal)
+      signal: signal, path: connectionPath)
     {
       persist(summary)
     }

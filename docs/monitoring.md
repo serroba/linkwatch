@@ -218,14 +218,23 @@ and by at most seven in the last byte, which is how vendors usually derive radio
 addresses. Zero or several matches leave the AP unknown; a match on the router
 means there is no separate AP. Suggestions are dismissed per discovered address set.
 
-The access point is optional. Each probe cycle follows the radio the Mac is associated
-with: when discovery matches the BSSID to the router, only the router is probed (the
-Mac is on the router's own Wi-Fi, for example in a room the AP does not reach); when it
-matches a separate device, that device is probed as the AP; otherwise the profile's AP
-is used, or the router alone when the profile has none. A roam changes the network
-identity, so the monitoring window restarts and the two paths are never mixed. With
-only the router probed, its outcome is recorded for both targets, so the bridge
-verdicts never apply. A network first joined on the router's radio is saved without
+The access point is optional. When the profile has one, it is pinged on every cycle
+wherever the Mac is, which also keeps its hardware address in the ARP cache so the
+connection can be identified. The **connection path** says which device the Mac is
+connected through: discovery's BSSID match decides (router or access point); without a
+match, the device answering at least 2 ms faster is taken as the nearer one, since
+reaching the other crosses the bridge; otherwise the path is unknown and shown as
+such. Discovery reruns on every roam, every minute, and on **Detect again** (`detect`).
+
+Through the access point, verdicts work as described above. On the router's own
+Wi-Fi the router is the Mac's first hop: the verdict uses the router in place of the
+access point, so a slow or silent access point never raises an alert for this Mac.
+Instead an **access point note** says that devices using it are affected when it is
+lost or more than the profile's difference threshold slower than the router. Each
+stored minute records its path, and stored minutes on the router's Wi-Fi are judged
+the same way. A roam changes the network identity, so the monitoring window restarts
+and the two paths are never mixed. Profiles without an access point probe only the
+router and record its outcome for both targets. A network first joined on the router's radio is saved without
 an AP; joining its AP later offers to add it, and returning to the router's radio
 keeps it without suggesting anything. A profile whose AP is empty or equals the router
 is a single device, such as a phone hotspot or an all-in-one router. A network counts as a phone hotspot when

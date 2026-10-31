@@ -8,6 +8,8 @@ public enum HeadlessCommand: Equatable, Sendable {
   case findAccessPoint(json: Bool)
   case accept(json: Bool)
   case dismiss
+  /// Recheck which device the Mac is connected through.
+  case detect
   case pause
   case resume
   case listProfiles(json: Bool)
@@ -61,6 +63,9 @@ public enum HeadlessCommand: Equatable, Sendable {
     Act (the same actions as the menu bar panel and Settings window):
       accept                 Monitor this network, or update its profile, as suggested.
       dismiss                "Not now": hide the current suggestion in the running app.
+      detect                 Recheck whether this Mac is connected through the access point
+                             or the router's own Wi-Fi (the panel's Detect again). Sends no
+                             traffic.
       find-ap                Ping every address in a private Wi-Fi subnet of /22 or smaller
                              once, so the ARP cache can reveal the AP, then show the result.
                              Sends traffic; run it only on networks you are allowed to scan.
@@ -175,7 +180,8 @@ public enum HeadlessCommand: Equatable, Sendable {
     let commands: [String: HeadlessCommand] = [
       "status": .status(json: json, local: local), "neighbors": .neighbors(json: json),
       "authorize": .authorize, "find-ap": .findAccessPoint(json: json),
-      "accept": .accept(json: json), "dismiss": .dismiss, "pause": .pause, "resume": .resume,
+      "accept": .accept(json: json), "dismiss": .dismiss, "detect": .detect, "pause": .pause,
+      "resume": .resume,
       "help": .help, "--help": .help, "-h": .help,
     ]
     return commands[name]
