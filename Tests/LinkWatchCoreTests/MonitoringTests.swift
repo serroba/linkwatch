@@ -2,9 +2,9 @@ import Testing
 
 @testable import LinkWatchCore
 
-private func pair(_ elapsed: Double, ap: Double = 1, router: Double = 2) -> ProbePair {
+private func pair(_ elapsed: Double, accessPoint: Double = 1, router: Double = 2) -> ProbePair {
   ProbePair(
-    elapsed: elapsed, accessPoint: .success(milliseconds: ap),
+    elapsed: elapsed, accessPoint: .success(milliseconds: accessPoint),
     router: .success(milliseconds: router)
   )
 }
@@ -66,7 +66,7 @@ private func pair(_ elapsed: Double, ap: Double = 1, router: Double = 2) -> Prob
   var window = MonitoringWindow(thresholds: thresholds)
   #expect(window.thresholds == Thresholds())
   for elapsed in stride(from: 0.0, through: 10, by: 2) {
-    window.append(pair(elapsed, ap: 50, router: 60))
+    window.append(pair(elapsed, accessPoint: 50, router: 60))
   }
   #expect(window.health == .bothSlow)
 }
@@ -74,11 +74,11 @@ private func pair(_ elapsed: Double, ap: Double = 1, router: Double = 2) -> Prob
 @Test func unreachableClearsWhenBothTargetsReplyAgain() {
   var window = MonitoringWindow()
   for elapsed in stride(from: 0.0, through: 8, by: 2) {
-    window.append(pair(elapsed, ap: 5, router: 20))
+    window.append(pair(elapsed, accessPoint: 5, router: 20))
   }
   window.append(ProbePair(elapsed: 10, accessPoint: .success(milliseconds: 5), router: .timeout))
   #expect(window.health == .unreachable(accessPoint: false, router: true))
-  window.append(pair(12, ap: 5, router: 20))
+  window.append(pair(12, accessPoint: 5, router: 20))
   #expect(window.health == .healthy)
 }
 
