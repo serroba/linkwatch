@@ -139,6 +139,8 @@ public final class MonitorController {
   public internal(set) var deviceTest = DeviceTestState.idle
   @ObservationIgnored var deviceTestBounds: [DeviceTestPhase: ClosedRange<TimeInterval>] = [:]
   public internal(set) var historyError: String?
+  /// The latest restart recorded in this run, compared with the links once minutes follow.
+  public internal(set) var lastRestart: AppEvent?
 
   @ObservationIgnored let environment: any NetworkEnvironment
   @ObservationIgnored let probe: any LatencyProbe

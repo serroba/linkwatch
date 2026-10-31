@@ -32,6 +32,8 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
   public var events: [AppEvent]
   /// How link quality around each marked activity compares with the rest of the period.
   public var markEffects: [MarkEffect]
+  /// Link quality before and after each restart the person recorded.
+  public var restarts: [RestartEffect]
   public var notes: [String]
 
   public static let minimumGapMinutes = 10
@@ -58,6 +60,7 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
       .sorted { $0.time < $1.time }
     self.events = windowEvents
     markEffects = MarkEffect.effects(events: windowEvents, minutes: window, profiles: profiles)
+    restarts = RestartEffect.effects(events: windowEvents, minutes: window)
     gaps = Self.gaps(recorded: recorded, since: since, now: now).map { gap in
       var annotated = gap
       // The cause usually lands inside the first missing minute, and the recovery inside
@@ -171,6 +174,11 @@ extension DiagnoseReport {
       lines.append("")
       lines.append("Hourly")
       lines += HistoryRollup.table(hourly).split(separator: "\n").map { "  " + $0 }
+    }
+    if !restarts.isEmpty {
+      lines.append("")
+      lines.append("Restarts")
+      lines += restarts.map { "  \(time.string(from: $0.time))  \($0.sentence)" }
     }
     if !markEffects.isEmpty {
       lines.append("")

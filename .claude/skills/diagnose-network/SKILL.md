@@ -44,7 +44,11 @@ typical spikes per link after the marks versus otherwise, problem-minute share a
 cautious conclusion (it needs three or more marks). `deviceTest` events record
 guided device tests (`started`, `on`, `off`, then the conclusion), which compare 30
 seconds as usual, on and off; suggest one (`scripts/linkwatch test-device NAME`, the
-user must operate the device) when a specific device is suspected.
+user must operate the device) when a specific device is suspected. `restarts` lists
+each restart the user recorded (`restarted` events) with link levels before and after
+and an outcome (`helped`, `worse`, `noChange`, `measuring`, `noBaseline`); a restart
+that did not help points away from that device. After advising a restart, suggest
+clicking **I restarted…** (or `scripts/linkwatch restarted --wait`) to confirm it.
 
 ## 2. Check the data can answer the question
 

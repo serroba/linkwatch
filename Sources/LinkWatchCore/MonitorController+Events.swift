@@ -14,6 +14,32 @@ extension MonitorController {
     return true
   }
 
+  /// The device a restart most likely concerns: the named bridge, the phone on a hotspot,
+  /// or the router.
+  public var defaultRestartDevice: String {
+    let profile = session.profile ?? profiles.first { $0.ssid == network?.ssid }
+    if let bridge = profile?.bridgeName { return bridge }
+    return profile?.hotspot == true ? "phone" : "router"
+  }
+
+  /// Records that a device was restarted now, so its effect can be shown a few minutes later.
+  @discardableResult
+  public func restarted(_ text: String? = nil) -> String {
+    let device = text.flatMap(AppEvent.markLabel) ?? defaultRestartDevice
+    let event = AppEvent(time: now(), kind: .restarted, detail: device)
+    try? events.append(event)
+    lastRestart = event
+    return device
+  }
+
+  /// The effect of the latest restart, shown for an hour after it.
+  public var restartEffect: RestartEffect? {
+    guard let lastRestart, now().timeIntervalSince(lastRestart.time) < 3600 else { return nil }
+    return RestartEffect(
+      time: lastRestart.time, device: lastRestart.detail ?? defaultRestartDevice,
+      minutes: week.minutes)
+  }
+
   /// Records what changed since the last observation, so the event log stays a list of
   /// transitions rather than repeated state.
   func recordTransitions() {

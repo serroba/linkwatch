@@ -22,6 +22,8 @@ public enum HeadlessCommand: Equatable, Sendable {
   case events(hours: Int, json: Bool)
   case mark(String)
   case testDevice(String)
+  /// A restarted device, or nil for the profile's bridge, the phone or the router.
+  case restarted(String?, wait: Bool)
   case help
 
   public struct UsageError: Error, Equatable, CustomStringConvertible {
@@ -61,6 +63,10 @@ public enum HeadlessCommand: Equatable, Sendable {
       pause | resume         Pause or resume monitoring in the running app.
       mark LABEL             Note what you are doing now, such as "desk moved", so incidents
                              and reports show it next to the measurements.
+      restarted [DEVICE] [--wait]
+                             Note that you just restarted DEVICE (default: the named bridge,
+                             the phone on a hotspot, or the router). LinkWatch compares the
+                             links before and after; --wait prints the result (about 5 min).
       test-device NAME       A guided 90-second test: 30 s as usual, 30 s with the device on,
                              30 s off, then which link (if any) it disturbs. Follow the prompts.
       profile list           List saved profiles.
@@ -141,6 +147,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "export": try export(options)
     case "mark": try mark(options)
     case "test-device": try testDevice(options)
+    case "restarted": restarted(options)
     default: nil
     }
   }

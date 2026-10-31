@@ -25,6 +25,8 @@ public struct AppEvent: Codable, Equatable, Sendable {
     case marked
     /// A guided device test started, changed phase, finished or was cancelled.
     case deviceTest
+    /// A person restarted a device, such as the powerline adapters or the router.
+    case restarted
   }
 
   /// Turns free text into a mark label: one line, trimmed, at most 60 characters.

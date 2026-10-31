@@ -58,6 +58,13 @@ extension HeadlessCommand {
     return .testDevice(device)
   }
 
+  static func restarted(_ arguments: [String]) -> HeadlessCommand {
+    var options = arguments
+    let wait = options.contains("--wait")
+    options.removeAll { $0 == "--wait" }
+    return .restarted(AppEvent.markLabel(options.joined(separator: " ")), wait: wait)
+  }
+
   static func mark(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
     guard let label = AppEvent.markLabel(arguments.joined(separator: " ")) else {
       throw UsageError(description: "mark needs a short label, such as \"desk moved\"")
