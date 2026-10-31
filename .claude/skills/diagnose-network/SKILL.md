@@ -23,6 +23,9 @@ scripts/linkwatch diagnose --hours 24 --json
 - The text form (`scripts/linkwatch diagnose --hours 24`) is useful to show the user.
 - For a specific moment, `scripts/linkwatch history --hours N --json` gives every
   stored minute; `scripts/linkwatch incidents --days 7` lists problems with evidence.
+- For "how has it been this week?" or "should I replace X?", run
+  `scripts/linkwatch summary --json`: problems per area, busiest hours, latency under
+  heavy use (`load.addedLatency` ≥ 50 ms means bufferbloat) and restart outcomes.
 - Always use `scripts/linkwatch`, never the bare executable: run directly from a shell,
   macOS hides the Wi-Fi name and the report looks broken.
 
@@ -30,7 +33,8 @@ scripts/linkwatch diagnose --hours 24 --json
 
 When the user shares a `LinkWatch report …` folder (for example sent from a family
 member's Mac by AirDrop), do not run `diagnose`: this Mac's data is not theirs. Read
-`report.json` (the same structure as `diagnose --json`) and `report.txt`, and use
+`summary.json` and the summary at the top of `report.txt` first for the week's
+pattern, then `report.json` (the same structure as `diagnose --json`), and use
 `minutes.json` for a specific moment. `generatedAt` and `appVersion` say when and
 with which version it was made; the period ends at `generatedAt`. Redacted reports
 replace names and addresses with `network-N`, `address-N` and `device-N`.
@@ -74,6 +78,10 @@ already group problem minutes and name the most likely cause.
 | `allClear` | Working normally | All links fast, no loss |
 | `weakSignal` | The Mac's Wi-Fi signal is weak; move closer | AP slow, lossy or spiky with RSSI < −70 dBm or SNR < 20 dB |
 | `accessPoint` | Overloaded or failing AP | AP slow or lossy with a good signal (or signal unknown) |
+
+The AP is optional and follows the radio the Mac is on: minutes where AP and router
+values are identical were measured on the router's own Wi-Fi (no AP in the path, so
+bridge verdicts cannot apply). `events` show `roamed` when the Mac moved between them.
 
 On a profile with `hotspot: true` the AP and router are the phone: `accessPoint`,
 `accessPointSpikes` and `weakSignal` mean the Mac-to-phone link (bring them closer or

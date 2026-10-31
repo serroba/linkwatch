@@ -43,6 +43,15 @@ Click the icon to open the panel. From the top:
   the most likely cause. Hover over one to see the measurements behind it.
 - **Pause monitoring**, **Settings…** and **Quit**.
 
+## A simpler panel and notifications
+
+In Settings, **Simple panel** shows only the advice, the **I restarted…** menu and the
+buttons; **Show details** opens the measurements and charts. **Notify me when a
+problem lasts 3 minutes** (off until you turn it on, when macOS asks once) sends one
+notification saying what to do, such as restarting the powerline adapters, and
+another when the connection is back to normal. Short blips, lag spikes, large
+downloads and a router that only ignores LinkWatch never notify.
+
 ## Marking what you were doing
 
 If you suspect something at home affects the connection (an electric desk, a
@@ -84,9 +93,19 @@ LinkWatch only watches networks you approve.
    name; LinkWatch never reads where you are.
 2. When you join a new Wi-Fi network, the panel shows **New Wi-Fi network** with the
    router and, if found, the access point. Click **Monitor this network**.
-3. If the access point is not found, click **Find AP**. It asks each address on your
-   home network once, so the Mac learns which one is the access point; it only runs
-   when you click it. Or enter the access point's address in Settings.
+3. The access point is optional. If the Mac is connected straight to the router's
+   Wi-Fi, LinkWatch monitors the router alone. If there is a separate access point
+   that was not found, click **Find AP**. It asks each address on your home network
+   once, so the Mac learns which one is the access point, and only runs when you
+   click it. Or enter the access point's address in Settings.
+
+   **Moving around the house.** Many homes have the router's own Wi-Fi in one room and
+   an access point (for example behind powerline adapters) in another, with the same
+   network name. LinkWatch follows whichever one the Mac is connected to: on the
+   router's Wi-Fi it pings only the router, and behind the access point it pings both,
+   so advice about the powerline adapters appears only when they are in the path. If
+   you first set up the network on the router's Wi-Fi, LinkWatch offers to add the
+   access point the first time you join it.
 4. Optionally, in Settings, name what connects the access point to the router, for
    example *"TP-Link powerline adapters"*. The advice then uses that name.
 
@@ -128,7 +147,9 @@ restarting your equipment will not help.
 **It was not working last night. Can I see what happened?** Yes. The panel lists the
 last day's problems, and the chart's **7 d** view shows the week. To let someone else
 look, click **Export report…** at the bottom of the panel: LinkWatch saves the last
-week's diagnosis and measurements in a folder and shows it in Finder. Send that
+week's summary, diagnosis and measurements in a folder and shows it in Finder. The
+summary at the top says which part of the connection caused most trouble, at what
+time of day, and what to change, such as replacing powerline adapters with a cable. Send that
 folder by AirDrop or Messages. It contains your network name and local addresses, so
 send it only to people you trust.
 

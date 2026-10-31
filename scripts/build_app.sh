@@ -7,6 +7,12 @@ app_dir="$PWD/dist/LinkWatch.app"
 mkdir -p "$app_dir/Contents/MacOS"
 cp "$binary_dir/LinkWatch" "$app_dir/Contents/MacOS/LinkWatch"
 cp Resources/Info.plist "$app_dir/Contents/Info.plist"
+# The icon is drawn by a script rather than stored as binary artwork.
+icon_dir="$(mktemp -d)"
+trap 'rm -rf "$icon_dir"' EXIT
+swift scripts/make_icon.swift "$icon_dir/AppIcon.iconset"
+mkdir -p "$app_dir/Contents/Resources"
+iconutil -c icns "$icon_dir/AppIcon.iconset" -o "$app_dir/Contents/Resources/AppIcon.icns"
 # Version from LINKWATCH_VERSION (set by the release workflow from the tag), else the
 # latest tag plus commit, so every build reports what it is.
 version="${LINKWATCH_VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.0.0)}"

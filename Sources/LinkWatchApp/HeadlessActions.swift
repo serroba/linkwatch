@@ -22,6 +22,7 @@ extension Headless {
     case .setProfile(let update): return await setProfile(update)
     case .removeProfile(let ssid): return await removeProfile(ssid)
     case .openAtLogin(let setting): return openAtLogin(setting)
+    case .notifications(let setting): return await notifications(setting)
     case .mark(let label): return await mark(label)
     case .testDevice(let device): return await testDevice(device)
     case .restarted(let device, let wait): return await restarted(device, wait: wait)
@@ -38,6 +39,7 @@ extension Headless {
     case .export(let days, let directory, let redact):
       return await export(days: days, directory: directory, redact: redact)
     case .incidents(let days, let json): return incidents(days: days, json: json)
+    case .summary(let days, let json): return await summary(days: days, json: json)
     case .diagnose(let hours, let json): return await diagnose(hours: hours, json: json)
     default:
       write("LinkWatch: unsupported command\n", to: .standardError)
@@ -133,7 +135,7 @@ extension Headless {
       for profile in profiles {
         let thresholds = profile.thresholds
         write(
-          "\(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router) · alert above "
+          "\(profile.ssid): AP \(profile.accessPointText) · Router \(profile.router) · alert above "
             + "\(thresholds.difference) ms difference or \(thresholds.slow) ms both, after "
             + "\(thresholds.sustainedSeconds) s; recover below \(thresholds.recoveryDifference) ms"
             + " / \(thresholds.recoverySlow) ms for \(thresholds.recoverySeconds) s; internet "
@@ -158,7 +160,7 @@ extension Headless {
       return fail(controller.storageError ?? "The profile could not be saved.", code: 1)
     }
     AppControl.post(.reloadProfiles)
-    write("Saved \(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router).\n")
+    write("Saved \(profile.ssid): AP \(profile.accessPointText) · Router \(profile.router).\n")
     return 0
   }
 
@@ -206,6 +208,20 @@ extension Headless {
     }
     let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
     write(HistoryRollup.table(HistoryRollup.hours(minutes, profiles: profiles)))
+    return 0
+  }
+
+  /// The period at a glance, the same overview that opens exported reports.
+  static func summary(days: Int, json: Bool) async -> Int32 {
+    let live = await AppControl.liveStatus()
+    let status = await currentStatus(live: live)
+    let diagnosis = Reports.diagnosis(status: status, appRunning: live != nil, hours: days * 24)
+    if json {
+      emit(encodable: diagnosis.summary, compact: false)
+    } else {
+      write(
+        diagnosis.summary.text(bridgeNames: diagnosis.bridgeNames, hotspots: diagnosis.hotspots))
+    }
     return 0
   }
 
@@ -277,6 +293,20 @@ extension Headless {
   private static func currentStatus(live: StatusReport?) async -> StatusReport {
     if let live { return live }
     return StatusReport(controller: await readyMonitor().controller, now: uptime)
+  }
+
+  static func notifications(_ setting: ProfileUpdate.Switch?) async -> Int32 {
+    if let setting {
+      let enabled = await ProblemNotifier.set(setting == .enabled)
+      if setting == .enabled, !enabled {
+        write(
+          "LinkWatch: notifications are not allowed; allow LinkWatch in System Settings › Notifications.\n",
+          to: .standardError)
+        return 1
+      }
+    }
+    write("Notifications: \(ProblemNotifier.description)\n")
+    return 0
   }
 
   static func openAtLogin(_ setting: ProfileUpdate.Switch?) -> Int32 {

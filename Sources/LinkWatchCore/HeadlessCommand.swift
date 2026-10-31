@@ -15,9 +15,11 @@ public enum HeadlessCommand: Equatable, Sendable {
   case removeProfile(ssid: String)
   case history(hours: Int, json: Bool)
   case incidents(days: Int, json: Bool)
+  case summary(days: Int, json: Bool)
   case diagnose(hours: Int, json: Bool)
   case clearHistory
   case openAtLogin(ProfileUpdate.Switch?)
+  case notifications(ProfileUpdate.Switch?)
   case export(days: Int, directory: String?, redact: Bool)
   case events(hours: Int, json: Bool)
   case mark(String)
@@ -75,7 +77,8 @@ public enum HeadlessCommand: Equatable, Sendable {
                   [--recovery-slow MS] [--sustained SECONDS] [--recovery SECONDS]
                   [--internet on|off] [--bridge NAME | --no-bridge] [--hotspot on|off]
                              Create or change a profile; omitted values keep their current
-                             setting. A new profile needs --ap and --router. --internet
+                             setting. A new profile needs --router; --ap is optional, and
+                             --ap none removes it (no separate access point). --internet
                              also pings Cloudflare 1.1.1.1 and Google 8.8.8.8 (default on).
                              --bridge names the device between the AP and the router, used
                              in advice such as "Restart the TP-Link powerline adapters".
@@ -85,11 +88,17 @@ public enum HeadlessCommand: Equatable, Sendable {
       profile remove NAME    Delete a profile; its network is no longer probed.
       history clear          Delete the stored week of history, as in Settings.
       export [--days N] [--dir PATH] [--redact]
-                             Write a shareable report folder (report.txt, report.json and
-                             minutes.json) for the last N days (default 7) and print its path.
+                             Write a shareable report folder (report.txt, report.json,
+                             summary.json and minutes.json) for the last N days (default 7) and print its path.
                              --redact replaces network names and local addresses.
+      summary [--days N]     The week at a glance (default 7 days): which part of the
+                             connection caused problems, when, latency under heavy use,
+                             restarts, and what to change.
       incidents [--days N]   List problems in the last N days (default 7): when, how long,
                              the most likely cause and the evidence for each link.
+      notifications [on|off] Show or change whether LinkWatch notifies you when a problem
+                             lasts 3 minutes, and when it is back to normal (default off;
+                             turning it on asks macOS for permission once).
       open-at-login [on|off] Show or change whether LinkWatch starts at login, so monitoring
                              resumes after a restart.
       authorize              Report Location permission, which is granted from the app's
@@ -132,6 +141,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "profile": try profile(options, json: json)
     case "history": try history(options, json: json)
     case "incidents": try incidents(options, json: json)
+    case "summary": try summary(options, json: json)
     case "diagnose": try diagnose(options, json: json)
     case "events": try events(options, json: json)
     default: try withOperands(name, options)
@@ -144,6 +154,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   {
     switch name {
     case "open-at-login": try openAtLogin(options)
+    case "notifications": try notifications(options)
     case "export": try export(options)
     case "mark": try mark(options)
     case "test-device": try testDevice(options)
@@ -231,7 +242,9 @@ public struct ProfileUpdate: Equatable, Sendable {
       throw .init(description: "profile set needs --ssid NAME")
     }
     self.ssid = ssid
-    accessPoint = try HeadlessCommand.take(value: "--ap", from: &options)
+    accessPoint = try HeadlessCommand.take(value: "--ap", from: &options).map {
+      $0 == "none" ? "" : $0
+    }
     router = try HeadlessCommand.take(value: "--router", from: &options)
     difference = try Self.number("--difference", from: &options)
     recoveryDifference = try Self.number("--recovery-difference", from: &options)
@@ -260,13 +273,11 @@ public struct ProfileUpdate: Equatable, Sendable {
     }
   }
 
-  /// Merges the update into an existing profile, or creates one when both addresses are given.
+  /// Merges the update into an existing profile, or creates one when the router is given.
   public func applied(to existing: NetworkProfile?) -> NetworkProfile? {
     var profile =
       existing
-      ?? accessPoint.flatMap { accessPoint in
-        router.map { NetworkProfile(ssid: ssid, accessPoint: accessPoint, router: $0) }
-      }
+      ?? router.map { NetworkProfile(ssid: ssid, accessPoint: accessPoint ?? "", router: $0) }
     guard profile != nil else { return nil }
     if let accessPoint { profile?.accessPoint = accessPoint }
     if let router { profile?.router = router }

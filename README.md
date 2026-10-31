@@ -111,6 +111,7 @@ scripts/linkwatch diagnose --hours 24   # the answer first, then the evidence
 scripts/linkwatch incidents --days 7    # when it broke, for how long, the likely cause
 scripts/linkwatch mark desk moved       # note what you are doing now
 scripts/linkwatch restarted --wait      # note a restart, then say whether it helped
+scripts/linkwatch summary               # the week at a glance and what to change
 scripts/linkwatch test-device desk      # guided 90-second test with prompts
 scripts/linkwatch export --redact       # a shareable report without names or addresses
 ```
@@ -146,7 +147,7 @@ measured, sent and stored.
 | [Architecture](docs/architecture.md) | How the code fits together |
 | [Roadmap](docs/roadmap.md) | What comes next |
 | [Verification](docs/verification.md) | Manual checks before distribution |
-| [Contributing](CONTRIBUTING.md) | Building, checks and the pull request workflow |
+| [Contributing](CONTRIBUTING.md) | Building, checks (including the test coverage gates) and the pull request workflow |
 
 ## Status
 

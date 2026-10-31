@@ -28,13 +28,18 @@ public struct NetworkProfile: Codable, Equatable, Identifiable, Sendable {
     self.hotspot = hotspot
   }
 
-  /// One device is both access point and router, as with phone hotspots and single-box home
-  /// routers; it is probed once per cycle.
-  public var isSingleDevice: Bool { accessPoint == router }
+  /// Whether no separate access point is known.
+  ///
+  /// The AP address is empty or the router's, as with phone hotspots and single-box home
+  /// routers. The router is probed once per cycle.
+  public var isSingleDevice: Bool { accessPoint.isEmpty || accessPoint == router }
+
+  /// The AP address for display, or "none" when the router is the only device.
+  public var accessPointText: String { isSingleDevice ? "none" : accessPoint }
 
   public var isValid: Bool {
     !ssid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-      && ssid.utf8.count <= 32 && Self.validAddress(accessPoint)
+      && ssid.utf8.count <= 32 && (accessPoint.isEmpty || Self.validAddress(accessPoint))
       && Self.validAddress(router) && thresholds.isValid
       && bridgeName.map { !$0.trimmingCharacters(in: .whitespaces).isEmpty && $0.count <= 60 }
         ?? true

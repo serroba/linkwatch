@@ -30,7 +30,7 @@ struct SuggestionCard: View {
           Text("Router: \(current.router) → \(proposed.router)").font(.caption)
         }
         if current.accessPoint != proposed.accessPoint {
-          Text("AP: \(current.accessPoint) → \(proposed.accessPoint)").font(.caption)
+          Text("AP: \(current.accessPointText) → \(proposed.accessPointText)").font(.caption)
         }
         actions(accept: "Update profile", canAccept: true)
       }

@@ -23,11 +23,18 @@ Run the same checks used by macOS CI:
 swift format lint --strict --recursive Package.swift Sources Tests
 swift build -Xswiftc -warnings-as-errors
 LINKWATCH_TEST_LOOPBACK=1 swift test --parallel --enable-code-coverage -Xswiftc -warnings-as-errors
-python3 scripts/check_coverage.py "$(swift test --show-codecov-path)" Sources/LinkWatchCore 90
+python3 scripts/check_coverage.py "$(swift test --show-codecov-path)" \
+  --gate Sources/LinkWatchCore=90 --file-floor Sources/LinkWatchCore=85 \
+  --report Sources/LinkWatchNetworking --report Sources/LinkWatchApp
 LINKWATCH_TEST_LOOPBACK=1 swift test --sanitize=thread --scratch-path .build/tsan
 swiftlint lint --strict --quiet
 periphery scan
 ```
+
+Coverage: `LinkWatchCore` holds the monitoring decisions and must keep at least 90%
+line coverage overall and 85% in every file; new logic belongs there, with tests.
+Networking and the app are reported but not gated: they wrap system calls and SwiftUI,
+and stay thin. CI writes the table to each run's job summary.
 
 `.swift-format` owns layout and forbids force unwraps, force `try` and implicitly
 unwrapped optionals. `.swiftlint.yml` adds semantic and complexity rules; split a
@@ -94,6 +101,9 @@ identifier, and macOS moves the Location and Local Network grants to whichever c
 asked last, so the development build silently stops monitoring. Test installs on
 another Mac or user account, then re-grant permissions from the development build's
 Settings if it happened.
+
+`build_app.sh` draws the app icon with `scripts/make_icon.swift` and converts it with
+`iconutil`; change the drawing there rather than adding image files.
 
 ## Documentation
 

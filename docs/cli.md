@@ -29,6 +29,7 @@ addresses; review it before sharing.
 | `diagnose [--hours N]` | The answer first: live verdict, coverage and unmonitored gaps (explained by events), incidents with evidence, the effect of marked activities, hourly history, events and notes on permissions, VPN and missing data. Default 24 h, up to 168. | No |
 | `status [--local]` | Everything the panel shows. Reads the running app; `--local` builds a fresh view. | No |
 | `watch [--cycles N] [--local]` | `status` every two seconds. Follows the running app; with `--local` or no app running it monitors itself, probing only approved networks. | Only when monitoring itself |
+| `summary [--days N]` | The week at a glance (default 7 days): problems per part of the connection, busiest hours of the day, latency under heavy use, restarts and what to change. | No |
 | `incidents [--days N]` | Problems of the last N days (default 7): span, likely cause, evidence per link, action. | No |
 | `history [--hours N]` | Hourly rollups (minutes recorded, latency, loss, MB down and up, problem minutes); every stored minute with `--json`. Default 24, up to 168. | No |
 | `events [--hours N]` | App and system events (launches, sleep, Wi-Fi changes, permission changes, pauses, verdict changes, marks), default 24 h, up to 168. | No |
@@ -53,16 +54,18 @@ running app immediately.
 | `profile set --ssid NAME [options]` | Settings › save a profile (see below) |
 | `profile remove NAME` | Settings › Remove |
 | `history clear` | Settings › **Clear history…** |
-| `export [--days N] [--dir PATH] [--redact]` | **Export report…**: writes `report.txt`, `report.json` and `minutes.json` for the last N days (default 7) into a dated folder and prints its path; `--redact` replaces network names, local addresses and hardware addresses with placeholders |
+| `export [--days N] [--dir PATH] [--redact]` | **Export report…**: writes `report.txt` (opening with the summary), `report.json`, `summary.json` and `minutes.json` for the last N days (default 7) into a dated folder and prints its path; `--redact` replaces network names, local addresses and hardware addresses with placeholders |
 | `authorize` | **Allow Wi-Fi identification**: asks the running app to show the Location prompt |
+| `notifications [on\|off]` | Settings › **Notify me when a problem lasts 3 minutes**; turning it on asks macOS for permission once; without an argument, shows the current state |
 | `open-at-login [on\|off]` | Settings › **Open LinkWatch at login**; without an argument, shows the current state |
 
 `profile set` options; omitted values keep their current setting, and a new profile
-needs `--ap` and `--router`:
+needs `--router` (the access point is optional):
 
 | Option | Meaning | Default |
 |---|---|---|
-| `--ap ADDRESS`, `--router ADDRESS` | Access point and router IPv4 addresses | — |
+| `--router ADDRESS` | Router IPv4 address | — |
+| `--ap ADDRESS`, `--ap none` | Access point IPv4 address, or none when there is no separate AP | none |
 | `--bridge NAME`, `--no-bridge` | What links the access point to the router, used in advice | none |
 | `--internet on\|off` | Also ping Cloudflare 1.1.1.1 and Google 8.8.8.8 | on |
 | `--hotspot on\|off` | The network is a phone's personal hotspot: advice names the phone, internet pings every 10 s | off, or on when detected |

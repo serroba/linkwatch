@@ -54,10 +54,12 @@ public struct NetworkDiscovery: Equatable, Sendable {
     let accessPoint: String
     switch self.accessPoint {
     case .found(let address): accessPoint = address
-    case .router: accessPoint = router
+    // The Mac is on the router's own radio; an AP elsewhere in the house is added later
+    // when the Mac joins it.
+    case .router: accessPoint = ""
     case .unknown:
       guard hotspot else { return nil }
-      accessPoint = router
+      accessPoint = ""
     }
     let profile = NetworkProfile(
       ssid: network.ssid, accessPoint: accessPoint, router: router, hotspot: hotspot)

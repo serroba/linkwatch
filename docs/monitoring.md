@@ -108,6 +108,16 @@ router, whose loss grows by ten points) is named as most likely affected; otherw
 it says there is no clear effect. Correlation is evidence, not proof: repeat the
 activity at different times to rule out coincidence.
 
+## Notifications
+
+When turned on, a notification follows the live (sustained) verdict. It fires once a
+verdict among `accessPoint`, `bridge`, `routerUnreachable`, `internet` and
+`weakSignal` has lasted three minutes, with the panel's headline and action; a change
+between those verdicts during the same problem does not notify again. After a
+notification, `allClear` held for a minute sends "Back to normal". Other verdicts
+(spikes, `busy`, `routerSilent`) never notify, and stopping monitoring (pause, sleep,
+another network) resets the clock without a notice.
+
 ## Restarts
 
 **I restarted…** (or `restarted [DEVICE]`) records a `restarted` event naming the
@@ -120,6 +130,24 @@ effect is *measuring*. A link improves when its typical latency drops by at leas
 opposite case. Any improvement with nothing worse reads as *helped*, anything worse
 as *worse*, and otherwise *no clear difference*. The panel and `status` show the
 latest restart for an hour; `diagnose` lists every restart in the period.
+
+## Weekly summary
+
+`summary` (and the top of exported reports) groups the period's incidents by the part
+of the connection they point to: Wi-Fi (`accessPoint`, `weakSignal`,
+`accessPointSpikes`), the bridge (`bridge`, `bridgeSpikes`, `routerUnreachable`), the
+internet (`internet`, `internetSpikes`), the Mac being busy, and the router not
+answering. Each area lists incidents, problem minutes and the longest incident. The
+busiest hours are the three hours of the day with the most incident minutes across
+all days. Latency under load compares the median of minute medians (internet when
+probed, otherwise the router) in minutes moving at least 30 MB, about 4 Mbit/s, with
+all other minutes. A router that ignores pings while the internet works is listed but
+does not count towards the busiest hours or the main cause, since it is usually a
+missing Local Network permission rather than a connection problem. Advice names an
+area when it holds at least half of the remaining problem minutes over three or more
+incidents; reports bufferbloat when at least ten heavy
+minutes add 50 ms or more; reports a time-of-day cluster when one hour holds at least
+30% of 20 or more problem minutes; and counts how often judged restarts helped.
 
 ## Device tests
 
@@ -190,10 +218,17 @@ and by at most seven in the last byte, which is how vendors usually derive radio
 addresses. Zero or several matches leave the AP unknown; a match on the router
 means there is no separate AP. Suggestions are dismissed per discovered address set.
 
-A profile whose access point and router share an address is a single device, such as
-a phone hotspot or an all-in-one home router. It is probed once per cycle and that
-outcome is recorded for both, so the bridge verdicts never apply. When the router is
-the AP, the suggestion is ready at once. A network counts as a phone hotspot when
+The access point is optional. Each probe cycle follows the radio the Mac is associated
+with: when discovery matches the BSSID to the router, only the router is probed (the
+Mac is on the router's own Wi-Fi, for example in a room the AP does not reach); when it
+matches a separate device, that device is probed as the AP; otherwise the profile's AP
+is used, or the router alone when the profile has none. A roam changes the network
+identity, so the monitoring window restarts and the two paths are never mixed. With
+only the router probed, its outcome is recorded for both targets, so the bridge
+verdicts never apply. A network first joined on the router's radio is saved without
+an AP; joining its AP later offers to add it, and returning to the router's radio
+keeps it without suggesting anything. A profile whose AP is empty or equals the router
+is a single device, such as a phone hotspot or an all-in-one router. A network counts as a phone hotspot when
 macOS marks the path as expensive or the router is in the iPhone hotspot range
 172.20.10.0/28; then an unknown AP is taken to be the router, and the saved profile
 is flagged `hotspot`. Hotspot profiles, and any network on an expensive path, ping

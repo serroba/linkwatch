@@ -201,7 +201,7 @@ extension StatusReport {
       network.map { "\($0.ssid) · BSSID \($0.bssid) · \($0.interface)" } ?? "unavailable"
     lines.append("Network:     \(networkText)")
     let profileText: String =
-      profile.map { "AP \($0.accessPoint) · Router \($0.router)" } ?? "none selected"
+      profile.map { "AP \($0.accessPointText) · Router \($0.router)" } ?? "none selected"
     lines.append("Profile:     \(profileText)")
     var latencyText =
       "Latency:     AP \(Self.milliseconds(latency.accessPoint))"
@@ -233,7 +233,7 @@ extension StatusReport {
     if let accessPointSearch { lines.append("AP search:   \(accessPointSearch)") }
     lines.append("Profiles:    \(profiles.count) saved")
     for profile in profiles {
-      lines.append("  - \(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router)")
+      lines.append("  - \(profile.ssid): AP \(profile.accessPointText) · Router \(profile.router)")
     }
     if let storageError { lines.append("Storage:     \(storageError)") }
     return lines.joined(separator: "\n")
@@ -283,7 +283,8 @@ extension StatusReport {
   }
 
   private static func summary(_ suggestion: Suggestion) -> String {
-    let target = suggestion.proposed.map { " (AP \($0.accessPoint) · Router \($0.router))" } ?? ""
+    let target =
+      suggestion.proposed.map { " (AP \($0.accessPointText) · Router \($0.router))" } ?? ""
     switch suggestion.kind {
     case "monitor":
       return (suggestion.ready ? "monitor this network" : "needs manual setup") + target

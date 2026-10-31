@@ -278,9 +278,9 @@ public final class MonitorController {
       let uptime = uptime
       cycles += 1
       let references = referencesToProbe(for: profile)
+      let addresses =
+        servingAccessPoint(for: profile).map { [$0, profile.router] } ?? [profile.router]
       let task = Task {
-        let addresses =
-          profile.isSingleDevice ? [profile.router] : [profile.accessPoint, profile.router]
         async let local = Self.measure(addresses, over: network.interface, with: probe)
         async let internet = Self.measure(references, over: network.interface, with: probe)
         let outcomes = await (local, internet)
