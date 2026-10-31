@@ -16,6 +16,7 @@ import SystemConfiguration
 final class Monitor: ObservableObject {
   let controller: MonitorController
   let environment: SystemEnvironment
+  let updates = UpdateChecker()
   private let pathMonitor = NWPathMonitor()
   private let notifier = ProblemNotifier()
   private var observers: [any NSObjectProtocol] = []
@@ -72,6 +73,12 @@ final class Monitor: ObservableObject {
         controller.refresh()
         notifier.update(controller)
         try? await Task.sleep(for: .milliseconds(500))
+      }
+    }
+    Task { [updates] in
+      while true {
+        await updates.checkIfDue()
+        try? await Task.sleep(for: .seconds(3600))
       }
     }
     Task { [weak controller] in

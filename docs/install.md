@@ -16,6 +16,11 @@ The installer downloads the latest release, verifies its checksum, quits a runni
 LinkWatch, installs it in `/Applications` (or `~/Applications` when `/Applications`
 is not writable) and opens it. Running the same command later updates it.
 
+Once installed, LinkWatch updates itself: it checks GitHub for a newer release once a
+day, and the panel then shows **LinkWatch X is available** with **Install update**,
+which runs the installer bundled in the app for that exact version and reopens
+LinkWatch. Turn the check off in Settings, or use `scripts/linkwatch update`.
+
 Prefer to read the script first? Download it, review it, then run it:
 
 ```sh
@@ -74,6 +79,10 @@ Services** and **Local Network** if you like.
 - Files downloaded with `curl` are not quarantined, so Gatekeeper does not check the
   app. You are trusting this repository's releases, as with any `curl | bash` install;
   review the script first if that matters to you.
+- **Install update** runs the copy of `install.sh` bundled inside the app, never a
+  script downloaded at update time, and only for copies in an Applications folder
+  (development builds are never replaced). Its output goes to
+  `~/Library/Application Support/io.github.serroba.LinkWatch/update.log`.
 - The installer only writes `LinkWatch.app` to the chosen folder. It needs no
   administrator rights and installs no background services.
 

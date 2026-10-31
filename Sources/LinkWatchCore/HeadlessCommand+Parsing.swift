@@ -96,6 +96,18 @@ extension HeadlessCommand {
     .openAtLogin(try setting("open-at-login", arguments))
   }
 
+  static func update(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
+    var options = arguments
+    let install = options.contains("--install")
+    options.removeAll { $0 == "--install" }
+    let automatic = try take(value: "--auto", from: &options).map {
+      value throws(UsageError) -> ProfileUpdate.Switch in
+      try setting("update --auto", [value]) ?? .enabled
+    }
+    try requireEmpty(options)
+    return .update(install: install, automatic: automatic)
+  }
+
   static func notifications(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
     .notifications(try setting("notifications", arguments))
   }

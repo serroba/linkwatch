@@ -13,6 +13,8 @@ trap 'rm -rf "$icon_dir"' EXIT
 swift scripts/make_icon.swift "$icon_dir/AppIcon.iconset"
 mkdir -p "$app_dir/Contents/Resources"
 iconutil -c icns "$icon_dir/AppIcon.iconset" -o "$app_dir/Contents/Resources/AppIcon.icns"
+# The in-app update runs this bundled, signed copy of the installer, never a downloaded one.
+cp scripts/install.sh "$app_dir/Contents/Resources/install.sh"
 # Version from LINKWATCH_VERSION (set by the release workflow from the tag), else the
 # latest tag plus commit, so every build reports what it is.
 version="${LINKWATCH_VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.0.0)}"

@@ -10,7 +10,7 @@ struct LinkWatchApp: App {
 
   var body: some Scene {
     MenuBarExtra {
-      DetailView(monitor: monitor.controller)
+      DetailView(monitor: monitor.controller, updates: monitor.updates)
     } label: {
       let controller = monitor.controller
       // A menu bar label renders only one image and one text, so the values share a Text.
@@ -40,6 +40,7 @@ private func latencyText(_ value: Double?) -> String {
 
 private struct DetailView: View {
   @Bindable var monitor: MonitorController
+  @ObservedObject var updates: UpdateChecker
   @StateObject private var options = DetailOptions()
   @AppStorage("simplePanel") private var simple = false
   @Environment(\.openWindow) private var openWindow
@@ -52,6 +53,7 @@ private struct DetailView: View {
         Spacer()
         Text("Every 2 seconds").font(.caption).foregroundStyle(.secondary)
       }
+      UpdateBanner(updates: updates)
       if monitor.session.profile != nil, !monitor.session.window.samples.isEmpty {
         let advice = monitor.advice
         Text(advice.headline).font(.headline).fixedSize(horizontal: false, vertical: true)
