@@ -209,7 +209,10 @@ extension StatusReport {
     let profileText: String =
       profile.map { "AP \($0.accessPointText) · Router \($0.router)" } ?? "none selected"
     lines.append("Profile:     \(profileText)")
-    if profile?.isSingleDevice == false {
+    if path == .accessPoint, profile?.isSingleDevice == true {
+      lines.append(
+        "Path:        through an access point the profile does not know (find-ap adds it)")
+    } else if profile?.isSingleDevice == false {
       let pathText: String =
         switch path {
         case .accessPoint: "through the access point"

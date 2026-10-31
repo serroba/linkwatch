@@ -22,6 +22,8 @@ final class DetailOptions: ObservableObject {
   @Published var markMessage: String?
   @Published var testDevice = "desk"
   @Published var showDetails = false
+  /// The panel content's measured height; starts tall so the first frame is not empty.
+  @Published var contentHeight: CGFloat = 600
 }
 
 /// Minute medians for one or seven days; red marks minutes with an alert or a lost reply.

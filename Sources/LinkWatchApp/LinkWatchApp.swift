@@ -35,6 +35,15 @@ struct LinkWatchApp: App {
   }
 }
 
+/// The panel content's natural height, measured so the scroll area is no taller than needed.
+private struct ContentHeight: PreferenceKey {
+  static let defaultValue: CGFloat = 0
+
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = max(value, nextValue())
+  }
+}
+
 private func latencyText(_ value: Double?) -> String {
   value.map { String(format: "%.0f", $0) } ?? "—"
 }
@@ -47,69 +56,92 @@ private struct DetailView: View {
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Image(nsImage: monitor.light.menuBarImage)
-        Text("LinkWatch").font(.headline)
-        Spacer()
-        Text("Every 2 seconds").font(.caption).foregroundStyle(.secondary)
-      }
-      UpdateBanner(updates: updates)
-      if monitor.session.profile != nil, !monitor.session.window.samples.isEmpty {
-        let advice = monitor.advice
-        Text(advice.headline).font(.headline).fixedSize(horizontal: false, vertical: true)
-        if let action = advice.action {
-          Text(action).fixedSize(horizontal: false, vertical: true)
-        }
-      }
-      Text(monitor.reason).font(.caption).foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-      if let note = monitor.accessPointNote {
-        Text(note).font(.caption).fixedSize(horizontal: false, vertical: true)
-      }
-      PathView(monitor: monitor)
-      if let suggestion = monitor.suggestion {
-        SuggestionCard(suggestion: suggestion, monitor: monitor) {
-          openWindow(id: "settings")
-          NSApp.activate(ignoringOtherApps: true)
-        }
-      }
-      if !simple || options.showDetails { details }
-      RestartView(monitor: monitor)
-      if simple {
-        Button(options.showDetails ? "Hide details" : "Show details") {
-          options.showDetails.toggle()
-        }
-        .buttonStyle(.link).font(.caption)
-      }
-      Divider()
-      Toggle("Pause monitoring", isOn: $monitor.paused)
-      HStack {
-        Button("Settings…") {
-          openWindow(id: "settings")
-          NSApp.activate(ignoringOtherApps: true)
-        }
-        Button("Export report…") {
-          do {
-            _ = try Reports.exportFromPanel(monitor)
-            options.exportMessage =
-              "Report saved and shown in Finder. Send the folder by AirDrop or Messages."
-          } catch {
-            options.exportMessage = "The report could not be saved: \(error.localizedDescription)"
+    // The content scrolls within the screen's height, so the buttons below stay reachable
+    // on small displays.
+    VStack(spacing: 0) {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 14) {
+          HStack {
+            Image(nsImage: monitor.light.menuBarImage)
+            Text("LinkWatch").font(.headline)
+            Spacer()
+            Text("Every 2 seconds").font(.caption).foregroundStyle(.secondary)
+          }
+          UpdateBanner(updates: updates)
+          if monitor.session.profile != nil, !monitor.session.window.samples.isEmpty {
+            let advice = monitor.advice
+            Text(advice.headline).font(.headline).fixedSize(horizontal: false, vertical: true)
+            if let action = advice.action {
+              Text(action).fixedSize(horizontal: false, vertical: true)
+            }
+          }
+          Text(monitor.reason).font(.caption).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+          if let note = monitor.accessPointNote {
+            Text(note).font(.caption).fixedSize(horizontal: false, vertical: true)
+          }
+          PathView(monitor: monitor)
+          if let suggestion = monitor.suggestion {
+            SuggestionCard(suggestion: suggestion, monitor: monitor) {
+              openWindow(id: "settings")
+              NSApp.activate(ignoringOtherApps: true)
+            }
+          }
+          if !simple || options.showDetails { details }
+          RestartView(monitor: monitor)
+          if simple {
+            Button(options.showDetails ? "Hide details" : "Show details") {
+              options.showDetails.toggle()
+            }
+            .buttonStyle(.link).font(.caption)
           }
         }
-        .help(
-          "Saves the last week's diagnosis and measurements, including your network name and local addresses, and shows it in Finder."
-        )
-        Spacer()
-        Button("Quit") { NSApp.terminate(nil) }
+        .padding(18)
+        .background(
+          GeometryReader { geometry in
+            Color.clear.preference(key: ContentHeight.self, value: geometry.size.height)
+          })
       }
-      if let message = options.exportMessage {
-        Text(message).font(.caption).foregroundStyle(.secondary)
+      .frame(height: min(options.contentHeight, Self.maxContentHeight))
+      .onPreferenceChange(ContentHeight.self) { height in
+        Task { @MainActor in options.contentHeight = height }
       }
+      Divider()
+      VStack(alignment: .leading, spacing: 10) {
+        Toggle("Pause monitoring", isOn: $monitor.paused)
+        HStack {
+          Button("Settings…") {
+            openWindow(id: "settings")
+            NSApp.activate(ignoringOtherApps: true)
+          }
+          Button("Export report…") {
+            do {
+              _ = try Reports.exportFromPanel(monitor)
+              options.exportMessage =
+                "Report saved and shown in Finder. Send the folder by AirDrop or Messages."
+            } catch {
+              options.exportMessage = "The report could not be saved: \(error.localizedDescription)"
+            }
+          }
+          .help(
+            "Saves the last week's diagnosis and measurements, including your network name and local addresses, and shows it in Finder."
+          )
+          Spacer()
+          Button("Quit") { NSApp.terminate(nil) }
+        }
+        if let message = options.exportMessage {
+          Text(message).font(.caption).foregroundStyle(.secondary)
+        }
+      }
+      .padding(.horizontal, 18)
+      .padding(.vertical, 12)
     }
-    .padding(18)
     .frame(width: 360)
+  }
+
+  /// The visible screen height less room for the pinned buttons and the menu bar.
+  private static var maxContentHeight: CGFloat {
+    max(240, (NSScreen.main?.visibleFrame.height ?? 800) - 150)
   }
 
   /// Measurements, history and diagnosis tools; one click away in the simple panel.
@@ -261,6 +293,7 @@ private struct ProfileSettings: View {
           }
         }
         .disabled(monitor.network == nil)
+        FindAccessPointRow(monitor: monitor, accessPoint: $editor.draft.accessPoint)
         TextField("Access point IPv4 address (optional)", text: $editor.draft.accessPoint)
         TextField("Router IPv4 address", text: $editor.draft.router)
         Text(
@@ -280,7 +313,7 @@ private struct ProfileSettings: View {
       Section("Phone hotspot") {
         Toggle("This network is a phone's personal hotspot", isOn: $editor.draft.hotspot)
         Text(
-          "Advice then names the phone, and internet pings run every 10 seconds instead of every 2 to save mobile data. The AP and router can be the same address."
+          "Set automatically the first time LinkWatch recognises this network as a phone hotspot, and kept with the network name. Turn it on yourself only for a phone LinkWatch does not recognise. Advice then names the phone, and internet pings run every 10 seconds instead of every 2 to save mobile data."
         )
         .font(.caption).foregroundStyle(.secondary)
       }

@@ -10,6 +10,15 @@ extension MonitorController {
     network != nil && (environment.isExpensivePath || discovery?.looksLikeIPhoneHotspot == true)
   }
 
+  /// Marks the monitored network's profile as a phone hotspot the first time it is
+  /// recognised as one, so phone wording and data saving follow the network name from then
+  /// on without anyone changing a setting.
+  func rememberHotspot() {
+    guard var profile = session.profile, !profile.hotspot, isHotspot else { return }
+    profile.hotspot = true
+    save(profile)
+  }
+
   /// The profile a suggestion would save, flagged as a hotspot when one is detected.
   public func proposedProfile(for discovery: NetworkDiscovery) -> NetworkProfile? {
     discovery.proposedProfile(hotspot: isHotspot)
