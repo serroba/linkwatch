@@ -79,12 +79,13 @@ private func pair(_ seconds: Double, accessPoint: ProbeOutcome, router: ProbeOut
   try store.append(second)
   #expect(try store.load(since: .distantPast) == [first, second])
 
-  let attributes = try FileManager.default.attributesOfItem(atPath: store.file.path)
+  let attributes = try FileManager.default.attributesOfItem(
+    atPath: directory.appendingPathComponent("history.jsonl").path)
   #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
   let folder = try FileManager.default.attributesOfItem(atPath: directory.path)
   #expect((folder[.posixPermissions] as? NSNumber)?.intValue == 0o700)
 
-  let handle = try FileHandle(forWritingTo: store.file)
+  let handle = try FileHandle(forWritingTo: directory.appendingPathComponent("history.jsonl"))
   try handle.seekToEnd()
   try handle.write(contentsOf: Data("{not json\n".utf8))
   try handle.close()

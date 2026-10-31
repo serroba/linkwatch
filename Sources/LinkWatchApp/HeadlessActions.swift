@@ -21,9 +21,18 @@ extension Headless {
     case .listProfiles(let json): return await listProfiles(json: json)
     case .setProfile(let update): return await setProfile(update)
     case .removeProfile(let ssid): return await removeProfile(ssid)
+    case .openAtLogin(let setting): return openAtLogin(setting)
+    case .mark(let label): return await mark(label)
+    default: return await report(command)
+    }
+  }
+
+  /// History, events, incidents, diagnosis and exports.
+  private static func report(_ command: HeadlessCommand) async -> Int32 {
+    switch command {
     case .history(let hours, let json): return history(hours: hours, json: json)
     case .clearHistory: return clearHistory()
-    case .openAtLogin(let setting): return openAtLogin(setting)
+    case .events(let hours, let json): return events(hours: hours, json: json)
     case .export(let days, let directory, let redact):
       return await export(days: days, directory: directory, redact: redact)
     case .incidents(let days, let json): return incidents(days: days, json: json)
@@ -276,6 +285,51 @@ extension Headless {
       }
     }
     write("Open at login: \(LoginItem.description)\n")
+    return 0
+  }
+
+  /// Only the app writes events, so the mark goes through it and is confirmed from the log.
+  static func mark(_ label: String) async -> Int32 {
+    guard await AppControl.liveStatus() != nil else {
+      write(
+        "LinkWatch: the menu bar app is not running; open LinkWatch first.\n", to: .standardError)
+      return 69
+    }
+    let since = Date().addingTimeInterval(-1)
+    AppControl.post(.mark, label: label)
+    let store = ReadOnlyEventStore(directory: Monitor.supportDirectory)
+    for _ in 0..<20 {
+      if (try? store.load(since: since))?.contains(where: {
+        $0.kind == .marked && $0.detail == label
+      })
+        == true
+      {
+        write(
+          "Marked \"\(label)\" at \(DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)).\n"
+        )
+        return 0
+      }
+      try? await Task.sleep(for: .milliseconds(100))
+    }
+    write("LinkWatch: the menu bar app did not record the mark.\n", to: .standardError)
+    return 1
+  }
+
+  static func events(hours: Int, json: Bool) -> Int32 {
+    let since = Date().addingTimeInterval(-Double(hours) * 3600)
+    let events =
+      (try? ReadOnlyEventStore(directory: Monitor.supportDirectory).load(since: since)) ?? []
+    if json {
+      emit(encodable: events, compact: false)
+      return 0
+    }
+    guard !events.isEmpty else {
+      write("No events in the last \(hours) h.\n")
+      return 0
+    }
+    let time = DateFormatter()
+    time.setLocalizedDateFormatFromTemplate("EEE d MMM HH:mm:ss")
+    for event in events { write("\(time.string(from: event.time))  \(event.summary)\n") }
     return 0
   }
 

@@ -12,6 +12,7 @@ extension MonitorController {
     do {
       try historyStore.clear()
       historyError = nil
+      record(.historyCleared)
     } catch {
       historyError = "History could not be cleared."
     }
@@ -24,6 +25,7 @@ extension MonitorController {
 
   func loadHistory() {
     let cutoff = now().addingTimeInterval(-WeekHistory.retention)
+    try? events.prune(before: cutoff)
     do {
       week = WeekHistory(minutes: try historyStore.load(since: cutoff))
       try historyStore.prune(before: cutoff)

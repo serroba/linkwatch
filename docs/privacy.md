@@ -46,6 +46,7 @@ network service's router and the existing ARP cache) and sends nothing.
 | Approved networks: name, access point and router addresses, thresholds, bridge name | `defaults read io.github.serroba.LinkWatch` | Until removed |
 | One summary per minute: latency, loss, bytes moved and the worst state | `~/Library/Application Support/io.github.serroba.LinkWatch/history.jsonl` (owner-only) | Seven days |
 | The last hour of raw measurements | Memory only | Until quit |
+| Events: launches, sleep and wake, Wi-Fi changes (name and access point hardware address), permission and verdict changes, marks you add | `~/Library/Application Support/io.github.serroba.LinkWatch/events.jsonl` (owner-only) | Seven days |
 | Whether to open at login | `defaults read io.github.serroba.LinkWatch` and macOS Login Items | Until changed |
 
 History never contains coordinates, browsing activity or anything about other devices

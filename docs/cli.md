@@ -31,6 +31,7 @@ addresses; review it before sharing.
 | `watch [--cycles N] [--local]` | `status` every two seconds. Follows the running app; with `--local` or no app running it monitors itself, probing only approved networks. | Only when monitoring itself |
 | `incidents [--days N]` | Problems of the last N days (default 7): span, likely cause, evidence per link, action. | No |
 | `history [--hours N]` | Hourly rollups (minutes recorded, latency, loss, MB down and up, problem minutes); every stored minute with `--json`. Default 24, up to 168. | No |
+| `events [--hours N]` | App and system events (launches, sleep, Wi-Fi changes, permission changes, pauses, verdict changes, marks), default 24 h, up to 168. | No |
 | `neighbors` | The Mac's cached ARP neighbours on Wi-Fi and which one matches the access point. | No |
 | `probe ADDRESS [--interface IF] [--count N]` | Raw ICMP echoes, for example `probe 127.0.0.1 --interface lo0` as a self-test. Only probe hosts you may test. | Yes |
 
@@ -45,6 +46,7 @@ running app immediately.
 | `dismiss` | **Not now** |
 | `find-ap` | **Find AP**: pings each address of a private Wi-Fi subnet of /22 or smaller once |
 | `pause`, `resume` | **Pause monitoring** |
+| `mark LABEL` | **Mark**: notes what you are doing now, such as `mark desk moved`, in the running app's event log |
 | `profile list` | Settings › selected networks |
 | `profile set --ssid NAME [options]` | Settings › save a profile (see below) |
 | `profile remove NAME` | Settings › Remove |

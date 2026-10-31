@@ -27,7 +27,9 @@ enum Reports {
       status: status, appRunning: appRunning, minutes: minutes, profiles: profiles,
       hours: hours, now: now, primaryInterface: SystemEnvironment().primaryInterface,
       appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-      opensAtLogin: LoginItem.isEnabled)
+      opensAtLogin: LoginItem.isEnabled,
+      events: (try? ReadOnlyEventStore(directory: Monitor.supportDirectory).load(since: since))
+        ?? [])
     let bridgeNames = Dictionary(
       profiles.compactMap { profile in profile.bridgeName.map { (profile.ssid, $0) } }
     ) { first, _ in first }

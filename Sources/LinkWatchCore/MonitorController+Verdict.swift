@@ -19,6 +19,7 @@ extension MonitorController {
     if let pendingVerdict, elapsed - pendingVerdict.since >= required {
       verdict = observed
       self.pendingVerdict = nil
+      recordTransitions()
     }
   }
 

@@ -27,9 +27,15 @@ final class Monitor: ObservableObject {
       recordsHistory
       ? FileHistoryStore(directory: Self.supportDirectory)
       : ReadOnlyHistoryStore(directory: Self.supportDirectory)
+    let events: any EventStore =
+      recordsHistory
+      ? FileEventStore(directory: Self.supportDirectory)
+      : ReadOnlyEventStore(directory: Self.supportDirectory)
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+    try? events.append(AppEvent(time: Date(), kind: .launched, detail: version))
     controller = MonitorController(
       environment: environment, probe: ICMPLatencyProbe(), store: UserDefaultsProfileStore(),
-      history: history,
+      history: history, events: events,
       uptime: { ProcessInfo.processInfo.systemUptime }, now: { Date() })
     environment.onAuthorizationChange = { [weak controller] in controller?.refresh() }
     observeLifecycle()
@@ -55,7 +61,10 @@ final class Monitor: ObservableObject {
       NotificationCenter.default.addObserver(
         forName: NSApplication.willTerminateNotification, object: nil, queue: .main
       ) { [weak controller] _ in
-        MainActor.assumeIsolated { controller?.flushHistory() }
+        MainActor.assumeIsolated {
+          controller?.flushHistory()
+          controller?.record(.quit)
+        }
       })
     Task { [weak controller] in
       while let controller {
