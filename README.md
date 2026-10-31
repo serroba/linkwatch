@@ -30,6 +30,14 @@ You explicitly choose which Wi-Fi networks to monitor and configure an AP and
 router address for each. Other networks generate no probes. Missing permission,
 disconnection and manual pause also stop monitoring.
 
+When the Mac joins a Wi-Fi network without a profile, LinkWatch suggests one. It
+reads the default router (only when Wi-Fi owns the default route) and the Mac's
+existing ARP cache, and proposes an AP only when exactly one cached neighbour on
+the Wi-Fi interface matches the associated BSSID. It never scans the subnet or
+sends traffic to find the AP; if the AP is not cached, or is the router itself, you
+enter it manually. Nothing is probed until you accept, and changed addresses on a
+known network are offered as an update rather than applied silently.
+
 The starting cadence is one paired measurement every two seconds, with latency
 displayed as the median of the last five samples. A router-minus-AP difference
 above 20 ms must persist for ten seconds before alerting. Recovery uses lower

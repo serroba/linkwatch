@@ -72,6 +72,12 @@ private struct DetailView: View {
         Text("Every 2 seconds").font(.caption).foregroundStyle(.secondary)
       }
       Text(monitor.reason).fixedSize(horizontal: false, vertical: true)
+      if let suggestion = monitor.suggestion {
+        SuggestionCard(suggestion: suggestion, monitor: monitor) {
+          openWindow(id: "settings")
+          NSApp.activate(ignoringOtherApps: true)
+        }
+      }
       HStack {
         metric("Configured AP", value: monitor.accessPointLatency)
         Spacer()
@@ -122,6 +128,59 @@ private struct DetailView: View {
     VStack(alignment: .leading) {
       Text(title).font(.caption).foregroundStyle(.secondary)
       Text("\(latencyText(value)) ms").font(.title2).monospacedDigit()
+    }
+  }
+}
+
+private struct SuggestionCard: View {
+  let suggestion: NetworkSuggestion
+  let monitor: MonitorController
+  let openSettings: () -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      switch suggestion {
+      case .monitor(let discovery):
+        Text("New Wi-Fi network: \(discovery.network.ssid)").font(.headline)
+        Text("Router: \(discovery.router ?? "not detected")").font(.caption)
+        Text(accessPointText(discovery.accessPoint)).font(.caption)
+        if discovery.proposedProfile == nil {
+          Text("Enter the missing address in Settings to monitor this network.")
+            .font(.caption).foregroundStyle(.secondary)
+        }
+        actions(accept: "Monitor this network", canAccept: discovery.proposedProfile != nil)
+      case .update(let current, let proposed):
+        Text("\(current.ssid) addresses changed").font(.headline)
+        if current.router != proposed.router {
+          Text("Router: \(current.router) → \(proposed.router)").font(.caption)
+        }
+        if current.accessPoint != proposed.accessPoint {
+          Text("AP: \(current.accessPoint) → \(proposed.accessPoint)").font(.caption)
+        }
+        actions(accept: "Update profile", canAccept: true)
+      }
+    }
+    .padding(10)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+  }
+
+  private func actions(accept: String, canAccept: Bool) -> some View {
+    HStack {
+      if canAccept {
+        Button(accept) { monitor.acceptSuggestion() }.keyboardShortcut(.defaultAction)
+      } else {
+        Button("Open Settings…", action: openSettings)
+      }
+      Button("Not now") { monitor.dismissSuggestion() }
+    }
+  }
+
+  private func accessPointText(_ discovery: AccessPointDiscovery) -> String {
+    switch discovery {
+    case .found(let address): "AP: \(address)"
+    case .router: "AP: the router itself; there is no separate AP to compare"
+    case .unknown: "AP: not found without scanning"
     }
   }
 }
@@ -206,17 +265,18 @@ private struct ProfileSettings: View {
         TextField("Exact Wi-Fi name (SSID)", text: $editor.draft.ssid)
         Button("Use current Wi-Fi") {
           if let network = monitor.network { editor.draft.ssid = network.ssid }
-          if let network = monitor.network,
-            let router = environment.defaultRouter(for: network.interface)
-          {
-            editor.draft.router = router
+          if let router = monitor.discovery?.router { editor.draft.router = router }
+          if case .found(let accessPoint) = monitor.discovery?.accessPoint {
+            editor.draft.accessPoint = accessPoint
           }
         }
         .disabled(monitor.network == nil)
         TextField("Configured AP IPv4 address", text: $editor.draft.accessPoint)
         TextField("Router IPv4 address", text: $editor.draft.router)
-        Text("Use current Wi-Fi also fills the router when Wi-Fi owns the default route.")
-          .font(.caption)
+        Text(
+          "Use current Wi-Fi fills the router when Wi-Fi owns the default route, and the AP when the Mac's existing ARP cache identifies it. LinkWatch never scans the network."
+        )
+        .font(.caption)
       }
       Section("Alert thresholds") {
         TextField("Difference (ms)", value: $editor.draft.thresholds.difference, format: .number)

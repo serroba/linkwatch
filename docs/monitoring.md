@@ -19,6 +19,17 @@ Recovery requires a difference below 10 ms and both medians below 20 ms for six
 seconds. Values on recovery boundaries retain the current alert. These defaults
 are configurable observations, not proof of a particular faulty component.
 
+## Network discovery
+
+Discovery runs when the Wi-Fi identity or the network path changes, not on every
+refresh. The router comes from the global IPv4 state only when its primary
+interface is the Wi-Fi interface. Neighbours come from the kernel ARP cache via
+`sysctl` and are limited to the Wi-Fi interface. A neighbour matches the BSSID when
+its hardware address is identical, or differs only in the locally administered bit
+and by at most seven in the last byte, which is how vendors usually derive radio
+addresses. Zero or several matches leave the AP unknown; a match on the router
+means there is no separate AP. Suggestions are dismissed per discovered address set.
+
 ## Native probes
 
 The IPv4 adapter uses an unprivileged datagram ICMP socket, bound with

@@ -90,7 +90,10 @@ final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDe
     return NetworkIdentity(ssid: ssid, bssid: bssid, interface: name)
   }
 
-  /// Returns the IPv4 router only when the given interface owns the default route.
+  func neighbors() -> [NeighborEntry] {
+    NeighborTable.entries()
+  }
+
   func defaultRouter(for interface: String) -> String? {
     guard let store = SCDynamicStoreCreate(nil, "LinkWatch" as CFString, nil, nil),
       let values = SCDynamicStoreCopyValue(store, "State:/Network/Global/IPv4" as CFString)
