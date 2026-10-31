@@ -19,6 +19,8 @@ final class Monitor: ObservableObject {
   let updates = UpdateChecker()
   private let pathMonitor = NWPathMonitor()
   private let notifier = ProblemNotifier()
+  // periphery:ignore - held only to keep the widget and its observers alive with the app.
+  private var widget: DesktopWidget?
   private var observers: [any NSObjectProtocol] = []
 
   /// Only the menu bar app records history; command-line runs read it, so they can never
@@ -58,6 +60,7 @@ final class Monitor: ObservableObject {
   }
 
   private func startLoops() {
+    widget = DesktopWidget(controller: controller)
     observers += AppControl.listen(controller: controller, environment: environment)
     observers.append(
       NotificationCenter.default.addObserver(

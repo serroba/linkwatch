@@ -24,6 +24,7 @@ extension Headless {
     case .removeProfile(let ssid): return await removeProfile(ssid)
     case .openAtLogin(let setting): return openAtLogin(setting)
     case .notifications(let setting): return await notifications(setting)
+    case .widget(let setting, let placement): return widget(setting, placement: placement)
     case .update(let install, let automatic):
       return await update(install: install, automatic: automatic)
     case .mark(let label): return await mark(label)
@@ -310,6 +311,15 @@ extension Headless {
   private static func currentStatus(live: StatusReport?) async -> StatusReport {
     if let live { return live }
     return StatusReport(controller: await readyMonitor().controller, now: uptime)
+  }
+
+  static func widget(_ setting: ProfileUpdate.Switch?, placement: WidgetPlacement?) -> Int32 {
+    if let setting { DesktopWidget.isShown = setting == .enabled }
+    if let placement { DesktopWidget.placement = placement }
+    AppControl.post(.applyWidget)
+    let place = DesktopWidget.placement == .onTop ? "always on top" : "behind windows"
+    write("Desktop widget: \(DesktopWidget.isShown ? "on" : "off") (\(place))\n")
+    return 0
   }
 
   static func notifications(_ setting: ProfileUpdate.Switch?) async -> Int32 {

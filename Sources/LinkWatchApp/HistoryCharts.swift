@@ -147,3 +147,30 @@ struct RecentProblems: View {
     }
   }
 }
+
+/// The widget's compact chart: the last few minutes per link, without axes.
+struct WidgetChart: View {
+  let history: [ProbePair]
+
+  var body: some View {
+    let latest = history.last?.elapsed ?? 0
+    Chart {
+      ForEach(Array(history.enumerated()), id: \.offset) { _, pair in
+        let seconds = pair.elapsed - latest
+        if let latency = pair.accessPoint.latency {
+          LineMark(x: .value("Seconds", seconds), y: .value("ms", latency))
+            .foregroundStyle(by: .value("Target", "AP"))
+        }
+        if let latency = pair.router.latency {
+          LineMark(x: .value("Seconds", seconds), y: .value("ms", latency))
+            .foregroundStyle(by: .value("Target", "Router"))
+        }
+      }
+    }
+    .chartXAxis(.hidden)
+    .chartYAxis(.hidden)
+    .chartLegend(.hidden)
+    .frame(height: 40)
+    .accessibilityLabel("Latency over the last five minutes")
+  }
+}

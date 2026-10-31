@@ -22,6 +22,8 @@ public enum HeadlessCommand: Equatable, Sendable {
   case clearHistory
   case openAtLogin(ProfileUpdate.Switch?)
   case notifications(ProfileUpdate.Switch?)
+  /// Show or hide the desktop widget, and where it sits.
+  case widget(ProfileUpdate.Switch?, placement: WidgetPlacement?)
   /// Check for a newer release now; optionally install it or change the daily check.
   case update(install: Bool, automatic: ProfileUpdate.Switch?)
   case export(days: Int, directory: String?, redact: Bool)
@@ -108,6 +110,9 @@ public enum HeadlessCommand: Equatable, Sendable {
                              newer. --install installs it with the installer bundled in the
                              app (copies in an Applications folder only). --auto turns the
                              daily check on or off (default on).
+      widget [on|off] [--behind | --on-top]
+                             Show or hide the translucent desktop widget, on the desktop
+                             behind windows (default) or always on top.
       notifications [on|off] Show or change whether LinkWatch notifies you when a problem
                              lasts 3 minutes, and when it is back to normal (default off;
                              turning it on asks macOS for permission once).
@@ -167,6 +172,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     switch name {
     case "open-at-login": try openAtLogin(options)
     case "notifications": try notifications(options)
+    case "widget": try widget(options)
     case "update": try update(options)
     case "export": try export(options)
     case "mark": try mark(options)
