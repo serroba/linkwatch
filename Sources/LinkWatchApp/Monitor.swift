@@ -23,7 +23,8 @@ final class Monitor: ObservableObject {
     environment = SystemEnvironment()
     controller = MonitorController(
       environment: environment, probe: ICMPLatencyProbe(), store: UserDefaultsProfileStore(),
-      uptime: { ProcessInfo.processInfo.systemUptime })
+      history: FileHistoryStore(directory: Self.supportDirectory),
+      uptime: { ProcessInfo.processInfo.systemUptime }, now: { Date() })
     environment.onAuthorizationChange = { [weak controller] in controller?.refresh() }
     observeLifecycle()
   }
@@ -35,8 +36,20 @@ final class Monitor: ObservableObject {
     return monitor
   }
 
+  /// Private per-user storage for the week of minute summaries.
+  static var supportDirectory: URL {
+    FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("io.github.serroba.LinkWatch", isDirectory: true)
+  }
+
   private func startLoops() {
     observers += AppControl.listen(controller: controller, environment: environment)
+    observers.append(
+      NotificationCenter.default.addObserver(
+        forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+      ) { [weak controller] _ in
+        MainActor.assumeIsolated { controller?.flushHistory() }
+      })
     Task { [weak controller] in
       while let controller {
         controller.refresh()

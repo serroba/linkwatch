@@ -3,7 +3,7 @@
 Each cycle records a pair of outcomes against monotonic elapsed time. Cancelled
 pairs and non-increasing timestamps are discarded. Statistics use the last 60
 pairs; each display median uses successful outcomes within the last five pairs.
-A separate display history keeps 450 pairs, about 15 minutes, in memory only. A failed
+A separate display history keeps 1,800 pairs, about one hour, in memory only. A failed
 latest probe must be displayed as unavailable even if older successes exist.
 Loss is the proportion of failed outcomes in the 60-pair statistics window.
 
@@ -18,6 +18,22 @@ lost reply neither hides nor restarts an active alert.
 Recovery requires a difference below 10 ms and both medians below 20 ms for six
 seconds. Values on recovery boundaries retain the current alert. These defaults
 are configurable observations, not proof of a particular faulty component.
+
+## Week history
+
+Each accepted pair is also aggregated into a wall-clock minute summary per network:
+sample count, nearest-rank median and 95th percentile and loss for the AP and the
+router, and the most severe state seen (`healthy`, `bothSlow`, `routerSlower`,
+`unreachable`). Wall-clock time is used because monotonic uptime restarts at boot.
+A minute is completed when the next minute or network begins, and is flushed on
+pause, sleep, network change and quit, so partial minutes are kept.
+
+Summaries are appended as JSON Lines to
+`~/Library/Application Support/io.github.serroba.LinkWatch/history.jsonl` (directory
+0700, file 0600); unreadable lines are skipped rather than discarding the week.
+Minutes older than seven days are pruned at launch and at most hourly afterwards.
+**Clear history** in Settings, or `scripts/linkwatch history clear`, deletes them.
+A storage failure is reported and never stops monitoring.
 
 ## Network discovery
 

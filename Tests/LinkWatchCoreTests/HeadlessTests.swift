@@ -100,3 +100,14 @@ private func parsedUpdate(_ arguments: String...) throws -> ProfileUpdate {
   #expect(!NetworkProfile.validAddress("127.0.0.1"))
   #expect(!NetworkProfile.validAddress("255.255.255.255"))
 }
+
+@Test func historyCommandsParse() throws {
+  #expect(try HeadlessCommand.parse(["history"]) == .history(hours: 24, json: false))
+  #expect(
+    try HeadlessCommand.parse(["history", "--hours", "168", "--json"])
+      == .history(hours: 168, json: true))
+  #expect(try HeadlessCommand.parse(["history", "clear"]) == .clearHistory)
+  for invalid in [["history", "--hours", "169"], ["history", "clear", "now"], ["history", "x"]] {
+    #expect(throws: HeadlessCommand.UsageError.self) { try HeadlessCommand.parse(invalid) }
+  }
+}
