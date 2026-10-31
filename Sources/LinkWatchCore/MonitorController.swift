@@ -132,6 +132,8 @@ public final class MonitorController {
   @ObservationIgnored var lastTraffic: TrafficReading?
   /// Counts probe cycles, to space out internet references on metered connections.
   @ObservationIgnored var cycles = 0
+  /// When discovery last ran, so the connected device is rechecked every minute.
+  @ObservationIgnored var discoveredAt: TimeInterval = -.infinity
   /// Rates from the last five cycles and the highest seen in this session.
   @ObservationIgnored var recentRates: [Double] = []
   @ObservationIgnored var sessionPeakRate: Double = 0
@@ -152,7 +154,7 @@ public final class MonitorController {
   @ObservationIgnored let now: @MainActor () -> Date
   @ObservationIgnored private var inFlight: Task<ProbePair, Never>?
   @ObservationIgnored private var dismissed: Set<String> = []
-  @ObservationIgnored private var needsDiscovery = true
+  @ObservationIgnored var needsDiscovery = true
 
   public static let interval: TimeInterval = 2
 
@@ -279,8 +281,10 @@ public final class MonitorController {
       let uptime = uptime
       cycles += 1
       let references = referencesToProbe(for: profile)
+      // The access point is pinged from anywhere on the network: on the router's own Wi-Fi
+      // the reply crosses the bridge, which is informative rather than a problem.
       let addresses =
-        servingAccessPoint(for: profile).map { [$0, profile.router] } ?? [profile.router]
+        profile.isSingleDevice ? [profile.router] : [profile.accessPoint, profile.router]
       let task = Task {
         async let local = Self.measure(addresses, over: network.interface, with: probe)
         async let internet = Self.measure(references, over: network.interface, with: probe)
@@ -314,8 +318,9 @@ public final class MonitorController {
       suggestion = nil
       return
     }
-    if needsDiscovery || discovery?.network != network {
+    if needsDiscovery || discovery?.network != network || uptime() - discoveredAt >= 60 {
       needsDiscovery = false
+      discoveredAt = uptime()
       discovery = NetworkDiscovery(
         network: network, router: environment.defaultRouter(for: network.interface),
         neighbors: environment.neighbors())

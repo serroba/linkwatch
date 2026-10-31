@@ -7,6 +7,9 @@ extension MonitorController {
     guard let profile = session.profile else { return }
     let thresholds = profile.thresholds
     var evidence = session.window.evidence
+    // On the router's own Wi-Fi the router is this Mac's first hop; the access point is
+    // reported separately in `accessPointNote`.
+    if onRouterRadio { evidence.accessPoint = evidence.router }
     evidence.busy = isBusy
     evidence.weakSignal = signal?.isWeak ?? false
     let observed = Verdict(evidence, thresholds: thresholds)

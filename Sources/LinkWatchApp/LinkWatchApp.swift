@@ -16,7 +16,8 @@ struct LinkWatchApp: App {
       // A menu bar label renders only one image and one text, so the values share a Text.
       Label {
         Text(
-          (controller.onRouterRadio ? "" : "AP \(latencyText(controller.accessPointLatency)) · ")
+          (controller.session.profile?.isSingleDevice != false
+            ? "" : "AP \(latencyText(controller.accessPointLatency)) · ")
             + "R \(latencyText(controller.routerLatency)) ms"
         )
         .monospacedDigit()
@@ -63,6 +64,10 @@ private struct DetailView: View {
       }
       Text(monitor.reason).font(.caption).foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
+      if let note = monitor.accessPointNote {
+        Text(note).font(.caption).fixedSize(horizontal: false, vertical: true)
+      }
+      PathView(monitor: monitor)
       if let suggestion = monitor.suggestion {
         SuggestionCard(suggestion: suggestion, monitor: monitor) {
           openWindow(id: "settings")
@@ -110,8 +115,10 @@ private struct DetailView: View {
   /// Measurements, history and diagnosis tools; one click away in the simple panel.
   @ViewBuilder private var details: some View {
     HStack {
-      if !monitor.onRouterRadio {
-        metric("Access point", value: monitor.accessPointLatency)
+      if monitor.session.profile?.isSingleDevice == false {
+        metric(
+          monitor.onRouterRadio ? "Access point (via router)" : "Access point",
+          value: monitor.accessPointLatency)
         Spacer()
       }
       metric(monitor.onRouterRadio ? "Router Wi-Fi" : "Router", value: monitor.routerLatency)
@@ -120,10 +127,15 @@ private struct DetailView: View {
         metric("Internet", value: monitor.session.window.internetMedian)
       }
     }
-    if !monitor.onRouterRadio, let accessPoint = monitor.accessPointLatency,
-      let router = monitor.routerLatency
+    if monitor.session.profile?.isSingleDevice == false,
+      let accessPoint = monitor.accessPointLatency, let router = monitor.routerLatency
     {
-      Text(String(format: "Router − AP: %+.1f ms", router - accessPoint)).monospacedDigit()
+      Text(
+        monitor.onRouterRadio
+          ? String(format: "AP − Router: %+.1f ms", accessPoint - router)
+          : String(format: "Router − AP: %+.1f ms", router - accessPoint)
+      )
+      .monospacedDigit()
     }
     if let signal = monitor.signal {
       Text("Wi-Fi signal: \(signal.summary)").monospacedDigit().font(.caption)
@@ -144,12 +156,6 @@ private struct DetailView: View {
       Text(profile.ssid).font(.headline)
       Text("AP \(profile.accessPointText) · Router \(profile.router)").font(.caption)
       Text("Associated BSSID: \(monitor.network?.bssid ?? "Unavailable")").font(.caption)
-      Text(
-        monitor.onRouterRadio
-          ? "Connected to the router's own Wi-Fi here, so the access point is not in the path."
-          : "Connected through the access point \(monitor.servingAccessPoint(for: profile) ?? "")."
-      )
-      .font(.caption).foregroundStyle(.secondary)
       Text(
         String(
           format: "Packet loss, last 2 min — AP %.0f%% · Router %.0f%%",

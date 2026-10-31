@@ -8,6 +8,7 @@ extension Headless {
     case .accept(let json): return await accept(json: json)
     case .findAccessPoint(let json): return await findAccessPoint(json: json)
     case .dismiss: return await tellApp(.dismissSuggestion) { $0.suggestion == nil }
+    case .detect: return await detect()
     case .pause: return await tellApp(.pause) { $0.paused }
     case .resume: return await tellApp(.resume) { !$0.paused }
     case .authorize: return await authorize()
@@ -94,6 +95,20 @@ extension Headless {
       try? await Task.sleep(for: .milliseconds(200))
     }
     return fail("The menu bar app did not confirm the change.", code: 1)
+  }
+
+  /// Asks the running app to recheck its path, then prints the status it reports.
+  private static func detect() async -> Int32 {
+    guard await AppControl.liveStatus() != nil else {
+      return fail("The menu bar app is not running; open LinkWatch first.", code: 69)
+    }
+    AppControl.post(.detectPath)
+    try? await Task.sleep(for: .milliseconds(300))
+    guard let report = await AppControl.liveStatus() else {
+      return fail("The menu bar app did not answer.", code: 1)
+    }
+    emit(report, json: false)
+    return 0
   }
 
   /// macOS shows the Location prompt only for the app, so ask the running app to request it.

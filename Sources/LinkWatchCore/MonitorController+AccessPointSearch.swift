@@ -1,20 +1,40 @@
 extension MonitorController {
-  /// The access point the Mac reaches the router through right now.
+  /// The device the Mac is connected through right now, or nil while that is unclear.
   ///
-  /// Nil when the Mac is on the router's own radio. The same network can be both as someone moves around the
-  /// house, so this follows the associated radio rather than the profile alone.
-  public func servingAccessPoint(for profile: NetworkProfile) -> String? {
-    let current = discovery?.network == network ? discovery?.accessPoint : nil
-    switch current {
-    case .router: return nil
-    case .found(let address) where address != profile.router: return address
-    default: return profile.isSingleDevice ? nil : profile.accessPoint
-    }
+  /// The same network can be reached through the router's own Wi-Fi in one room and an
+  /// access point in another, so this follows the associated radio.
+  public var connectionPath: ConnectionPath? {
+    guard let profile = session.profile else { return nil }
+    return ConnectionPath(
+      profile: profile, discovered: discovery?.network == network ? discovery?.accessPoint : nil,
+      evidence: session.window.evidence)
   }
 
-  /// Whether the Mac is on the router's own radio for the monitored profile.
+  /// Rechecks which device the Mac is connected through, from the ARP cache; sends nothing.
+  public func detectPath() {
+    needsDiscovery = true
+    refresh()
+  }
+
+  /// Whether the Mac is on the router's own Wi-Fi while the profile also has an access point.
   public var onRouterRadio: Bool {
-    session.profile.map { servingAccessPoint(for: $0) == nil } ?? false
+    connectionPath == .router && session.profile?.isSingleDevice == false
+  }
+
+  /// How the access point is doing while this Mac is not using it: informative, not an alert.
+  public var accessPointNote: String? {
+    guard onRouterRadio, let profile = session.profile else { return nil }
+    let evidence = session.window.evidence
+    let bridge = profile.bridgeName.map { "the \($0)" } ?? "the link to it"
+    if evidence.accessPoint.isLost {
+      return
+        "The access point is not answering through \(bridge). This Mac is on the router's Wi-Fi, so only devices using the access point are affected."
+    }
+    guard let accessPoint = evidence.accessPoint.median, let router = evidence.router.median,
+      accessPoint - router > profile.thresholds.difference
+    else { return nil }
+    return
+      "The access point is slow to reach through \(bridge). This Mac is on the router's Wi-Fi, so only devices using the access point are affected."
   }
 
   /// Pings every host in the Wi-Fi subnet once so the ARP cache can reveal the access point.

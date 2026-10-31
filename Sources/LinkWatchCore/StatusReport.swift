@@ -74,6 +74,10 @@ public struct StatusReport: Codable, Equatable, Sendable {
   public var deviceTest: DeviceTestReport?
   /// The latest restart and its effect, for an hour after it.
   public var restart: RestartEffect?
+  /// The device this Mac is connected through, or nil while unclear.
+  public var path: ConnectionPath?
+  /// The access point's state while this Mac is on the router's own Wi-Fi.
+  public var accessPointNote: String?
   public var weekMinutes: Int
   /// ISO 8601 start of the oldest stored minute.
   public var weekStart: String?
@@ -121,6 +125,8 @@ public struct StatusReport: Codable, Equatable, Sendable {
     usageTotals = controller.usageTotals
     deviceTest = DeviceTestReport(controller: controller, now: now)
     restart = controller.restartEffect
+    path = controller.connectionPath
+    accessPointNote = controller.accessPointNote
     weekMinutes = controller.week.minutes.count
     weekStart = controller.week.minutes.first.map { ISO8601DateFormatter().string(from: $0.start) }
     historyError = controller.historyError
@@ -203,6 +209,16 @@ extension StatusReport {
     let profileText: String =
       profile.map { "AP \($0.accessPointText) · Router \($0.router)" } ?? "none selected"
     lines.append("Profile:     \(profileText)")
+    if profile?.isSingleDevice == false {
+      let pathText: String =
+        switch path {
+        case .accessPoint: "through the access point"
+        case .router: "router's own Wi-Fi (the access point is reached across the bridge)"
+        case nil: "not determined yet"
+        }
+      lines.append("Path:        \(pathText)")
+    }
+    if let accessPointNote { lines.append("AP note:     \(accessPointNote)") }
     var latencyText =
       "Latency:     AP \(Self.milliseconds(latency.accessPoint))"
       + " · Router \(Self.milliseconds(latency.router))"
@@ -326,6 +342,8 @@ extension StatusReport {
     try container.encode(usageTotals, forKey: .usageTotals)
     try container.encode(deviceTest, forKey: .deviceTest)
     try container.encode(restart, forKey: .restart)
+    try container.encode(path, forKey: .path)
+    try container.encode(accessPointNote, forKey: .accessPointNote)
     try container.encode(weekMinutes, forKey: .weekMinutes)
     try container.encode(weekStart, forKey: .weekStart)
     try container.encode(historyError, forKey: .historyError)
