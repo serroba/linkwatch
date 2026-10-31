@@ -5,6 +5,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case probe(address: String, interface: String?, count: Int, json: Bool)
   case neighbors(json: Bool)
   case authorize
+  case findAccessPoint(json: Bool)
   case help
 
   public struct UsageError: Error, Equatable, CustomStringConvertible {
@@ -23,6 +24,9 @@ public enum HeadlessCommand: Equatable, Sendable {
                              or NAME. Use only for addresses you are allowed to probe.
       neighbors              List cached ARP neighbours on the Wi-Fi interface and which one
                              matches the associated BSSID. Sends no traffic.
+      find-ap                Ping every address in a private Wi-Fi subnet of /22 or smaller
+                             once, so the ARP cache can reveal the AP, then show the result.
+                             Sends traffic; run it only on networks you are allowed to scan.
       authorize              Ask macOS for the Location permission needed to read the Wi-Fi
                              name, and wait up to 60 seconds for an answer.
       help                   Show this help.
@@ -43,6 +47,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "status": command = .status(json: json)
     case "neighbors": command = .neighbors(json: json)
     case "authorize": command = .authorize
+    case "find-ap": command = .findAccessPoint(json: json)
     case "help", "--help", "-h": command = .help
     case "watch":
       let cycles = try take(count: "--cycles", from: &options)

@@ -13,15 +13,17 @@ struct LinkWatchApp: App {
       DetailView(monitor: monitor.controller)
     } label: {
       let controller = monitor.controller
-      HStack(spacing: 4) {
+      // A menu bar label renders only one image and one text, so the values share a Text.
+      Label {
+        Text(
+          "AP \(latencyText(controller.accessPointLatency)) · R \(latencyText(controller.routerLatency)) ms"
+        )
+        .monospacedDigit()
+      } icon: {
         Image(systemName: controller.displayState.symbol)
           .foregroundStyle(controller.displayState.color)
-        Text("AP \(latencyText(controller.accessPointLatency))")
-          .monospacedDigit().frame(width: 52, alignment: .trailing)
-        Text("·")
-        Text("R \(latencyText(controller.routerLatency)) ms")
-          .monospacedDigit().frame(width: 70, alignment: .leading)
       }
+      .labelStyle(.titleAndIcon)
       .accessibilityLabel("LinkWatch: \(controller.reason)")
     }
     .menuBarExtraStyle(.window)
@@ -147,6 +149,7 @@ private struct SuggestionCard: View {
           Text("Enter the missing address in Settings to monitor this network.")
             .font(.caption).foregroundStyle(.secondary)
         }
+        if discovery.accessPoint == .unknown { search }
         actions(accept: "Monitor this network", canAccept: discovery.proposedProfile != nil)
       case .update(let current, let proposed):
         Text("\(current.ssid) addresses changed").font(.headline)
@@ -164,6 +167,26 @@ private struct SuggestionCard: View {
     .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
   }
 
+  @ViewBuilder private var search: some View {
+    switch monitor.accessPointSearch {
+    case .searching(let hosts):
+      HStack {
+        ProgressView().controlSize(.small)
+        Text("Pinging \(hosts) addresses once…").font(.caption)
+      }
+    case .idle, .finished:
+      if case .finished(let message) = monitor.accessPointSearch {
+        Text(message).font(.caption)
+      }
+      Button("Find AP (pings this subnet once)") {
+        Task { await monitor.searchForAccessPoint() }
+      }
+      .help(
+        "Pings each address in this private Wi-Fi subnet once so macOS learns the AP's hardware address. Nothing is probed again until you start monitoring."
+      )
+    }
+  }
+
   private func actions(accept: String, canAccept: Bool) -> some View {
     HStack {
       if canAccept {
@@ -179,7 +202,7 @@ private struct SuggestionCard: View {
     switch discovery {
     case .found(let address): "AP: \(address)"
     case .router: "AP: the router itself; there is no separate AP to compare"
-    case .unknown: "AP: not found without scanning"
+    case .unknown: "AP: not in the Mac's ARP cache"
     }
   }
 }
@@ -273,7 +296,7 @@ private struct ProfileSettings: View {
         TextField("Configured AP IPv4 address", text: $editor.draft.accessPoint)
         TextField("Router IPv4 address", text: $editor.draft.router)
         Text(
-          "Use current Wi-Fi fills the router assigned to the Wi-Fi service, and the AP when the Mac's existing ARP cache identifies it. LinkWatch never scans the network."
+          "Use current Wi-Fi fills the router assigned to the Wi-Fi service, and the AP when the Mac's existing ARP cache identifies it. Find AP in the menu bar panel can search the subnet once on request."
         )
         .font(.caption)
       }

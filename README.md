@@ -34,9 +34,11 @@ When the Mac joins a Wi-Fi network without a profile, LinkWatch suggests one. It
 reads the router assigned to the Wi-Fi service (even when a VPN owns the default
 route) and the Mac's
 existing ARP cache, and proposes an AP only when exactly one cached neighbour on
-the Wi-Fi interface matches the associated BSSID. It never scans the subnet or
-sends traffic to find the AP; if the AP is not cached, or is the router itself, you
-enter it manually. Nothing is probed until you accept, and changed addresses on a
+the Wi-Fi interface matches the associated BSSID. Discovery itself sends no traffic.
+Bridged and mesh APs are often absent from the cache; you can then enter the AP
+manually or click **Find AP**, which pings each address of a private Wi-Fi subnet of
+/22 or smaller once so macOS learns the AP's hardware address. The search runs only
+when you ask, never automatically, and refuses public or larger networks. Nothing is probed until you accept, and changed addresses on a
 known network are offered as an update rather than applied silently.
 
 The starting cadence is one paired measurement every two seconds, with latency
@@ -45,8 +47,8 @@ above 20 ms must persist for ten seconds before alerting. Recovery uses lower
 thresholds and sustained healthy samples to avoid flickering. Thresholds are
 configurable; [monitoring semantics](docs/monitoring.md) define the exact rules.
 
-Settings stay on the Mac, history is bounded and held in memory, and no telemetry
-or subnet scanning is part of the design. macOS Location permission is used to
+Settings stay on the Mac, history is bounded and held in memory, and there is no
+telemetry. The only subnet-wide traffic is the explicit, one-time **Find AP** search. macOS Location permission is used to
 identify the current Wi-Fi network; the app does not need location coordinates.
 Probes bind to the selected Wi-Fi interface. Network changes, roaming and
 sleep/wake must cancel pending work and discard stale measurements.
@@ -114,6 +116,7 @@ scripts/linkwatch status            # state, latency, loss, alert, discovery, pr
 scripts/linkwatch status --json     # the same as JSON; absent values are null
 scripts/linkwatch watch --cycles 5  # monitor headlessly, one report per 2 s cycle
 scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
+scripts/linkwatch find-ap           # opt-in one-time subnet ping to locate the AP
 scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test
 scripts/linkwatch authorize         # request Location permission from the terminal
 ```

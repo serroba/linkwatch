@@ -42,3 +42,9 @@ import Testing
   #expect(!NetworkProfile.validAddress("127.0.0.1"))
   #expect(!NetworkProfile.validAddress("255.255.255.255"))
 }
+
+@Test func findAccessPointCommandParses() throws {
+  #expect(try HeadlessCommand.parse(["find-ap"]) == .findAccessPoint(json: false))
+  #expect(try HeadlessCommand.parse(["find-ap", "--json"]) == .findAccessPoint(json: true))
+  #expect(throws: HeadlessCommand.UsageError.self) { try HeadlessCommand.parse(["find-ap", "x"]) }
+}

@@ -3,103 +3,6 @@ import Testing
 
 @testable import LinkWatchCore
 
-private let home = NetworkIdentity(ssid: "Home", bssid: "00:00:5e:00:53:01", interface: "en0")
-private let profile = NetworkProfile(ssid: "Home", accessPoint: "192.0.2.2", router: "192.0.2.1")
-
-@MainActor
-private final class FakeEnvironment: NetworkEnvironment {
-  var isPermitted = true
-  var network: NetworkIdentity? = home
-  var wifiState: WiFiState {
-    WiFiState(
-      authorization: isPermitted ? "authorized" : "not determined", interface: "en0",
-      poweredOn: true, ssidVisible: network != nil, bssidVisible: network != nil)
-  }
-  var router: String?
-  var neighborEntries: [NeighborEntry] = []
-  var neighborReads = 0
-
-  func currentNetwork() -> NetworkIdentity? { isPermitted ? network : nil }
-
-  func defaultRouter(for interface: String) -> String? { interface == "en0" ? router : nil }
-
-  func neighbors() -> [NeighborEntry] {
-    neighborReads += 1
-    return neighborEntries
-  }
-}
-
-private struct StoreFailure: Error {}
-
-private final class FakeStore: ProfileStore {
-  var saved: [NetworkProfile]?
-  var failsToLoad = false
-  var failsToSave = false
-
-  init(_ saved: [NetworkProfile]? = nil) { self.saved = saved }
-
-  func load() throws -> [NetworkProfile]? {
-    if failsToLoad { throw StoreFailure() }
-    return saved
-  }
-
-  func save(_ profiles: [NetworkProfile]) throws {
-    if failsToSave { throw StoreFailure() }
-    saved = profiles
-  }
-}
-
-/// Records probes and runs an optional hook on the main actor before replying.
-@MainActor
-private final class ProbeScript {
-  var requests: [String] = []
-  var outcomes: [String: ProbeOutcome] = [:]
-  var beforeReply: (() -> Void)?
-
-  func reply(address: String, interface: String) -> ProbeOutcome {
-    requests.append("\(address)@\(interface)")
-    beforeReply?()
-    return outcomes[address] ?? .success(milliseconds: 5)
-  }
-}
-
-private struct FakeProbe: LatencyProbe {
-  let script: ProbeScript
-
-  func measure(address: String, interface: String) async -> ProbeOutcome {
-    await script.reply(address: address, interface: interface)
-  }
-}
-
-@MainActor
-private final class Clock {
-  var now: TimeInterval = 100
-}
-
-@MainActor
-private struct Harness {
-  let environment = FakeEnvironment()
-  let script = ProbeScript()
-  let clock = Clock()
-  let store: FakeStore
-  let controller: MonitorController
-
-  init(profiles: [NetworkProfile]? = [profile], store: FakeStore? = nil) {
-    let store = store ?? FakeStore(profiles)
-    let clock = clock
-    self.store = store
-    controller = MonitorController(
-      environment: environment, probe: FakeProbe(script: script), store: store,
-      uptime: { clock.now })
-  }
-
-  func cycle(advancing seconds: TimeInterval = 2) async -> TimeInterval {
-    let delay = await controller.cycle()
-    clock.now += seconds
-    return delay
-  }
-}
-
 @MainActor
 @Test func unselectedNetworkSendsNoProbes() async {
   let harness = Harness(profiles: nil)
@@ -203,10 +106,10 @@ private struct Harness {
 
 @MainActor
 @Test func unreadableOrInconsistentStoredProfilesFailClosed() async {
-  let unreadable = FakeStore([profile])
+  let unreadable = FakeStore([homeProfile])
   unreadable.failsToLoad = true
   let duplicate = FakeStore([
-    profile, NetworkProfile(ssid: "Home", accessPoint: "192.0.2.3", router: "192.0.2.1"),
+    homeProfile, NetworkProfile(ssid: "Home", accessPoint: "192.0.2.3", router: "192.0.2.1"),
   ])
   for store in [unreadable, duplicate] {
     let harness = Harness(store: store)
@@ -221,7 +124,7 @@ private struct Harness {
 @Test func savingValidatesReplacesAndReportsFailures() {
   let harness = Harness(profiles: nil)
   #expect(!harness.controller.save(NetworkProfile(ssid: "Home", accessPoint: "1.1.1", router: "")))
-  #expect(harness.controller.save(profile))
+  #expect(harness.controller.save(homeProfile))
   let replacement = NetworkProfile(ssid: "Home", accessPoint: "192.0.2.3", router: "192.0.2.1")
   #expect(harness.controller.save(replacement))
   #expect(harness.controller.profiles == [replacement])
@@ -240,144 +143,4 @@ private struct Harness {
   harness.controller.remove(replacement)
   #expect(harness.controller.profiles.isEmpty)
   #expect(harness.controller.storageError == nil)
-}
-
-private let separateAccessPoint = [
-  NeighborEntry(address: "192.0.2.1", hardwareAddress: "00:00:5e:00:53:99", interface: "en0"),
-  NeighborEntry(address: "192.0.2.2", hardwareAddress: "00:00:5e:00:53:00", interface: "en0"),
-]
-
-@MainActor
-@Test func newNetworkIsSuggestedButNotProbedUntilAccepted() async {
-  let harness = Harness(profiles: nil)
-  harness.environment.router = "192.0.2.1"
-  harness.environment.neighborEntries = separateAccessPoint
-  harness.controller.networkChanged()
-  guard case .monitor(let discovery) = harness.controller.suggestion else {
-    Issue.record("Expected a suggestion to monitor the new network")
-    return
-  }
-  #expect(discovery.accessPoint == .found("192.0.2.2"))
-  _ = await harness.cycle()
-  #expect(harness.script.requests.isEmpty)
-
-  #expect(harness.controller.acceptSuggestion())
-  #expect(harness.controller.profiles.map(\.accessPoint) == ["192.0.2.2"])
-  #expect(harness.controller.suggestion == nil)
-  _ = await harness.cycle()
-  #expect(Set(harness.script.requests) == ["192.0.2.2@en0", "192.0.2.1@en0"])
-}
-
-@MainActor
-@Test func newNetworkWithoutSeparateAccessPointCannotBeAccepted() {
-  let harness = Harness(profiles: nil)
-  harness.environment.router = "192.0.2.1"
-  harness.controller.networkChanged()
-  guard case .monitor(let discovery) = harness.controller.suggestion else {
-    Issue.record("Expected a suggestion to set up the new network")
-    return
-  }
-  #expect(discovery.accessPoint == .unknown)
-  #expect(!harness.controller.acceptSuggestion())
-  #expect(harness.controller.profiles.isEmpty)
-}
-
-@MainActor
-@Test func changedRouterOffersUpdateKeepingThresholds() {
-  var thresholds = Thresholds()
-  thresholds.sustainedSeconds = 30
-  let saved = NetworkProfile(
-    ssid: "Home", accessPoint: "192.0.2.2", router: "192.0.2.1", thresholds: thresholds)
-  let harness = Harness(profiles: [saved])
-  harness.environment.router = "192.0.2.9"
-  harness.controller.networkChanged()
-  var expected = saved
-  expected.router = "192.0.2.9"
-  #expect(harness.controller.suggestion == .update(current: saved, proposed: expected))
-  #expect(harness.controller.session.profile?.router == "192.0.2.1")
-  #expect(harness.controller.acceptSuggestion())
-  #expect(harness.controller.profiles == [expected])
-  #expect(harness.controller.suggestion == nil)
-}
-
-@MainActor
-@Test func dismissedSuggestionReturnsOnlyWhenAddressesChange() {
-  let harness = Harness(profiles: nil)
-  harness.environment.router = "192.0.2.1"
-  harness.controller.networkChanged()
-  harness.controller.dismissSuggestion()
-  harness.controller.networkChanged()
-  #expect(harness.controller.suggestion == nil)
-  harness.environment.neighborEntries = separateAccessPoint
-  harness.controller.networkChanged()
-  #expect(harness.controller.suggestion != nil)
-}
-
-@MainActor
-@Test func discoveryRunsOnNetworkChangesOnly() {
-  let harness = Harness()
-  let reads = harness.environment.neighborReads
-  for _ in 0..<5 { harness.controller.refresh() }
-  #expect(harness.environment.neighborReads == reads)
-  harness.controller.networkChanged()
-  #expect(harness.environment.neighborReads == reads + 1)
-  harness.environment.network = NetworkIdentity(
-    ssid: "Home", bssid: "00:00:5e:00:53:02", interface: "en0")
-  harness.controller.refresh()
-  #expect(harness.environment.neighborReads == reads + 2)
-
-  harness.environment.isPermitted = false
-  harness.controller.networkChanged()
-  #expect(harness.controller.discovery == nil)
-  #expect(harness.controller.suggestion == nil)
-}
-
-@MainActor
-@Test func statusReportMirrorsControllerState() async throws {
-  let harness = Harness()
-  harness.environment.router = "192.0.2.1"
-  harness.controller.networkChanged()
-  harness.script.outcomes["192.0.2.1"] = .success(milliseconds: 50)
-  for _ in 0..<7 { _ = await harness.cycle() }
-  harness.script.outcomes["192.0.2.1"] = .timeout
-  _ = await harness.cycle()
-  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
-  #expect(report.state == .unreachable)
-  #expect(report.health == "unreachable(router)")
-  #expect(report.reason == "No reply from router")
-  #expect(report.network == home)
-  #expect(report.profile == profile)
-  #expect(report.latency.router == nil)
-  #expect(report.latency.accessPoint == 5)
-  #expect(report.samples == 8)
-  #expect(report.historyFailures == 1)
-  #expect(report.alertSeconds == 2)
-  #expect(report.discovery == StatusReport.Discovery(router: "192.0.2.1", accessPoint: "unknown"))
-  #expect(report.suggestion == nil)
-  #expect(
-    report.text.contains("State:       unreachable (unreachable(router)) — No reply from router"))
-  #expect(report.text.contains("Latency:     AP 5.0 ms · Router —"))
-  #expect(report.text.contains("Wi-Fi:       authorization authorized · interface en0 · on"))
-  #expect(report.text.contains("Discovery:   router 192.0.2.1 · AP not in ARP cache"))
-
-  let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(report)) as? [String: Any]
-  #expect(json?["suggestion"] is NSNull)
-  #expect((json?["latency"] as? [String: Any])?["router"] is NSNull)
-  #expect(try JSONDecoder().decode(StatusReport.self, from: JSONEncoder().encode(report)) == report)
-}
-
-@MainActor
-@Test func statusReportDescribesIdleSuggestion() {
-  let harness = Harness(profiles: nil)
-  harness.environment.router = "192.0.2.1"
-  harness.environment.neighborEntries = separateAccessPoint
-  harness.controller.networkChanged()
-  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
-  #expect(report.state == .idle)
-  #expect(report.alertSeconds == nil)
-  #expect(report.suggestion?.kind == "monitor")
-  #expect(report.suggestion?.ready == true)
-  #expect(
-    report.text.contains("Suggestion:  monitor this network (AP 192.0.2.2 · Router 192.0.2.1)"))
-  #expect(report.text.contains("Profiles:    0 saved"))
 }

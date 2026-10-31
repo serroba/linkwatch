@@ -48,6 +48,7 @@ public struct StatusReport: Codable, Equatable, Sendable {
   public var history: [HistoryPoint]
   public var discovery: Discovery?
   public var suggestion: Suggestion?
+  public var accessPointSearch: String?
   public var profiles: [NetworkProfile]
   public var storageError: String?
 
@@ -82,6 +83,11 @@ public struct StatusReport: Codable, Equatable, Sendable {
     historyFailures = history.filter { $0.accessPoint == nil || $0.router == nil }.count
     discovery = controller.discovery.map(Self.describe)
     suggestion = controller.suggestion.map(Self.describe)
+    switch controller.accessPointSearch {
+    case .idle: accessPointSearch = nil
+    case .searching(let hosts): accessPointSearch = "searching \(hosts) addresses"
+    case .finished(let message): accessPointSearch = message
+    }
     profiles = controller.profiles
     storageError = controller.storageError
   }
@@ -155,6 +161,7 @@ extension StatusReport {
     lines.append("History:     \(history.count) pairs, \(historyFailures) with a failed probe")
     lines.append("Discovery:   " + (discovery.map(Self.summary) ?? "not run"))
     lines.append("Suggestion:  " + (suggestion.map(Self.summary) ?? "none"))
+    if let accessPointSearch { lines.append("AP search:   \(accessPointSearch)") }
     lines.append("Profiles:    \(profiles.count) saved")
     for profile in profiles {
       lines.append("  - \(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router)")
@@ -215,6 +222,7 @@ extension StatusReport {
     try container.encode(history, forKey: .history)
     try container.encode(discovery, forKey: .discovery)
     try container.encode(suggestion, forKey: .suggestion)
+    try container.encode(accessPointSearch, forKey: .accessPointSearch)
     try container.encode(profiles, forKey: .profiles)
     try container.encode(storageError, forKey: .storageError)
   }

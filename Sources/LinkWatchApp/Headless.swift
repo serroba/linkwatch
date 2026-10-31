@@ -68,6 +68,13 @@ enum Headless {
       emit(await neighbors(), json: json)
     case .authorize:
       return await authorize()
+    case .findAccessPoint(let json):
+      let monitor = await readyMonitor()
+      if !json { write("Searching the Wi-Fi subnet for the AP; this pings each address once.\n") }
+      await monitor.controller.searchForAccessPoint()
+      let report = StatusReport(controller: monitor.controller, now: uptime)
+      emit(report, json: json)
+      guard case .found = monitor.controller.discovery?.accessPoint else { return 1 }
     }
     return 0
   }
