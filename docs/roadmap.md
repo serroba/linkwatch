@@ -64,7 +64,6 @@ happened and which link failed, on the Mac where it happened.
 
 1. **Developer ID signing and notarisation**, so updates keep macOS permissions (see
    Distribution below).
-2. **A coverage gate for the networking module**, once CI reports its coverage.
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.
