@@ -99,6 +99,9 @@ public final class MonitorController {
   public private(set) var suggestion: NetworkSuggestion?
   public internal(set) var accessPointSearch = AccessPointSearch.idle
   public internal(set) var week = WeekHistory()
+  /// The sustained verdict: a change must hold for the profile's alert or recovery time.
+  public internal(set) var verdict = Verdict.allClear
+  @ObservationIgnored var pendingVerdict: (verdict: Verdict, since: TimeInterval)?
   public internal(set) var historyError: String?
 
   @ObservationIgnored let environment: any NetworkEnvironment
@@ -259,6 +262,7 @@ public final class MonitorController {
       session.accept(pair, generation: generation)
       if generation == session.generation, session.window.samples.last == pair {
         record(pair)
+        updateVerdict(at: pair.elapsed)
       }
       if previous != session.window.health { healthSince = uptime() }
       reason = currentReason()
@@ -311,6 +315,8 @@ public final class MonitorController {
   private func invalidate() {
     inFlight?.cancel()
     flushHistory()
+    verdict = .allClear
+    pendingVerdict = nil
     session.reset()
     healthSince = uptime()
   }

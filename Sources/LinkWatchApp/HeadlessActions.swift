@@ -188,7 +188,8 @@ extension Headless {
       )
       return 0
     }
-    write(HistoryTable.text(minutes))
+    let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
+    write(HistoryTable.text(minutes, profiles: profiles))
     return 0
   }
 
@@ -209,7 +210,8 @@ extension Headless {
 
 /// Hourly rollups of minute summaries for terminal output.
 enum HistoryTable {
-  static func text(_ minutes: [MinuteSummary]) -> String {
+  static func text(_ minutes: [MinuteSummary], profiles: [NetworkProfile]) -> String {
+    let thresholds = Dictionary(profiles.map { ($0.ssid, $0.thresholds) }) { first, _ in first }
     let hours = Dictionary(grouping: minutes) { minute in
       Calendar.current.dateInterval(of: .hour, for: minute.start)?.start ?? minute.start
     }
@@ -217,16 +219,21 @@ enum HistoryTable {
     formatter.dateFormat = "yyyy-MM-dd HH:00"
     var lines = [
       "Hour              Samples  AP median/p95  loss   Router median/p95  loss   "
-        + "Internet median/p95  loss   Alert minutes"
+        + "Internet median/p95  loss   Problem minutes"
     ]
     for (hour, group) in hours.sorted(by: { $0.key < $1.key }) {
       let samples = group.reduce(0) { $0 + $1.samples }
-      let alerts = group.filter { $0.worstHealth != "healthy" }.count
+      let verdicts = group.map {
+        Verdict(LinkEvidence($0), thresholds: thresholds[$0.ssid] ?? Thresholds())
+      }
+      let problems = verdicts.filter(\.isProblem)
+      let common = Dictionary(grouping: problems) { $0 }.max { $0.value.count < $1.value.count }
       lines.append(
         formatter.string(from: hour) + "  " + pad(String(samples), 7) + "  "
           + target(group.map(\.accessPoint), samples: group.map(\.samples)) + "  "
           + target(group.map(\.router), samples: group.map(\.samples)) + "  "
-          + internet(group) + "     " + "\(alerts)/\(group.count)")
+          + internet(group) + "     " + "\(problems.count)/\(group.count)"
+          + (common.map { " mostly \($0.key.rawValue)" } ?? ""))
     }
     return lines.joined(separator: "\n") + "\n"
   }

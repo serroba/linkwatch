@@ -42,6 +42,9 @@ public struct StatusReport: Codable, Equatable, Sendable {
   }
 
   public var state: DisplayState
+  public var verdict: Verdict
+  public var headline: String
+  public var action: String?
   public var health: String
   public var reason: String
   public var permitted: Bool
@@ -70,6 +73,8 @@ public struct StatusReport: Codable, Equatable, Sendable {
   public init(controller: MonitorController, now: TimeInterval) {
     let window = controller.session.window
     state = controller.displayState
+    verdict = controller.verdict
+    (headline, action) = controller.advice
     health = Self.describe(window.health)
     reason = controller.reason
     permitted = controller.isPermitted
@@ -154,6 +159,7 @@ extension StatusReport {
   /// A human-readable summary; addresses are local network details, so share it with care.
   public var text: String {
     var lines: [String] = []
+    lines.append("Verdict:     \(headline)" + (action.map { " → \($0)" } ?? ""))
     lines.append("State:       \(state.rawValue) (\(health)) — \(reason)")
     var permission = "Permission:  " + (permitted ? "granted" : "missing")
     if paused { permission += " · paused" }
@@ -243,6 +249,9 @@ extension StatusReport {
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(state, forKey: .state)
+    try container.encode(verdict, forKey: .verdict)
+    try container.encode(headline, forKey: .headline)
+    try container.encode(action, forKey: .action)
     try container.encode(health, forKey: .health)
     try container.encode(reason, forKey: .reason)
     try container.encode(permitted, forKey: .permitted)

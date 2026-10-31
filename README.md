@@ -110,7 +110,7 @@ link** failed, on the Mac where it happened.
 
 Planned work, in order:
 
-1. **Internet reference points.** Probe Cloudflare (`1.1.1.1`) and Google
+1. **Internet reference points** (*implemented*). Probe Cloudflare (`1.1.1.1`) and Google
    (`8.8.8.8`) alongside the AP and router. The internet is blamed only when both are
    slow, so one provider's hiccup does not trigger advice. These probes leave the
    local network and reveal the public address to those providers, so they are a
@@ -132,6 +132,9 @@ Planned work, in order:
 
    Verdicts follow the existing sustained-alert rules and say "most likely": latency
    differences are evidence, not proof of a faulty device.
+   *Status:* implemented live, in `status` and in hourly history; the exact rules are
+   in [monitoring semantics](docs/monitoring.md#verdict). Wi-Fi signal and tether
+   rows follow with items 6 and 8.
 3. **Incident timeline.** Consecutive problem minutes grouped into incidents with
    start, end, the failing link and the verdict, for example "yesterday 19:40–20:05:
    the link between the AP and the router failed (router 100% loss, AP and internet

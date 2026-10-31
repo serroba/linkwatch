@@ -31,6 +31,29 @@ references, and each reference's own median is reported too. These probes leave 
 local network and disclose the public address to both providers. They do not affect
 the AP and router alert rules; the planned verdict uses them.
 
+## Verdict
+
+A verdict names the most likely failing link and at most one action. It is computed
+from evidence: the median and loss of each target over the last five pairs (live) or
+over one stored minute (history). A target is lost when half or more of its probes
+failed. Using the profile's thresholds, the first matching rule wins:
+
+1. AP lost, or AP median above the both-slow threshold → **access point** (weak
+   Wi-Fi signal or an overloaded access point).
+2. Router lost: with internet references working → **router silent** (traffic still
+   flows, so the router only ignores pings, or Local Network access is missing); with
+   references also lost → **bridge**; with no references probed → **router
+   unreachable**, worded conditionally because the cause cannot be told apart.
+3. Router minus AP above the difference threshold → **bridge**, the link between the
+   AP and the router, named by the profile (for example powerline adapters).
+4. Internet references lost, or slower than the router by more than 100 ms →
+   **internet** provider.
+5. Otherwise **all clear**.
+
+The live verdict changes only after the new verdict has held for the alert time
+(or the recovery time when clearing), and resets on any network change. Stored
+minutes are classified when read, so improved rules apply to the whole week.
+
 ## Week history
 
 Each accepted pair is also aggregated into a wall-clock minute summary per network:

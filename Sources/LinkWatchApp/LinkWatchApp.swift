@@ -88,7 +88,15 @@ private struct DetailView: View {
         Spacer()
         Text("Every 2 seconds").font(.caption).foregroundStyle(.secondary)
       }
-      Text(monitor.reason).fixedSize(horizontal: false, vertical: true)
+      if monitor.session.profile != nil, !monitor.session.window.samples.isEmpty {
+        let advice = monitor.advice
+        Text(advice.headline).font(.headline).fixedSize(horizontal: false, vertical: true)
+        if let action = advice.action {
+          Text(action).fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      Text(monitor.reason).font(.caption).foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
       if let suggestion = monitor.suggestion {
         SuggestionCard(suggestion: suggestion, monitor: monitor) {
           openWindow(id: "settings")
@@ -287,6 +295,15 @@ private struct ProfileSettings: View {
           "Use current Wi-Fi fills the router assigned to the Wi-Fi service, and the AP when the Mac's existing ARP cache identifies it. Find AP in the menu bar panel can search the subnet once on request."
         )
         .font(.caption)
+      }
+      Section("Between the access point and the router") {
+        TextField(
+          "Device name, e.g. TP-Link powerline adapters (optional)",
+          text: Binding(
+            get: { editor.draft.bridgeName ?? "" },
+            set: { editor.draft.bridgeName = $0.isEmpty ? nil : $0 }))
+        Text("Used in advice such as “Restart the TP-Link powerline adapters”.")
+          .font(.caption).foregroundStyle(.secondary)
       }
       Section("Internet reference points") {
         Toggle(
