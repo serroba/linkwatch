@@ -49,6 +49,7 @@ public enum IncidentTimeline {
     var runs: [[(MinuteSummary, Verdict)]] = []
     for problem in problems {
       if let last = runs.last?.last, last.0.ssid == problem.0.ssid,
+        last.1.family == problem.1.family,
         problem.0.start.timeIntervalSince(last.0.start) <= Double(allowedGapMinutes + 1) * 60
       {
         runs[runs.count - 1].append(problem)
@@ -56,7 +57,24 @@ public enum IncidentTimeline {
         runs.append([problem])
       }
     }
-    return runs.filter { $0.count >= minimumProblemMinutes }.compactMap(incident)
+    return merged(runs.filter { $0.count >= minimumProblemMinutes }).compactMap(incident)
+  }
+
+  /// Joins runs about the same link once blips of another link, too short to be incidents,
+  /// are removed, so a one-minute interruption does not split an incident in two.
+  private static func merged(_ runs: [[(MinuteSummary, Verdict)]]) -> [[(MinuteSummary, Verdict)]] {
+    var result: [[(MinuteSummary, Verdict)]] = []
+    for run in runs {
+      if let last = result.last?.last, let first = run.first, last.0.ssid == first.0.ssid,
+        last.1.family == first.1.family,
+        first.0.start.timeIntervalSince(last.0.start) <= Double(allowedGapMinutes + 1) * 60
+      {
+        result[result.count - 1] += run
+      } else {
+        result.append(run)
+      }
+    }
+    return result
   }
 
   private static func incident(_ run: [(MinuteSummary, Verdict)]) -> Incident? {
@@ -101,11 +119,26 @@ extension Verdict: Comparable {
     switch self {
     case .allClear: 0
     case .busy: 1
-    case .routerSilent: 2
-    case .routerUnreachable: 3
-    case .internet: 4
-    case .accessPoint: 5
-    case .bridge: 6
+    case .internetSpikes: 2
+    case .accessPointSpikes: 3
+    case .bridgeSpikes: 4
+    case .routerSilent: 5
+    case .routerUnreachable: 6
+    case .internet: 7
+    case .accessPoint: 8
+    case .bridge: 9
+    }
+  }
+
+  /// Verdicts about the same link group into one incident; a change of link starts another.
+  var family: Int {
+    switch self {
+    case .allClear: 0
+    case .accessPoint, .accessPointSpikes: 1
+    case .bridge, .bridgeSpikes: 2
+    case .internet, .internetSpikes: 3
+    case .routerSilent, .routerUnreachable: 4
+    case .busy: 5
     }
   }
 
@@ -119,6 +152,9 @@ extension Verdict: Comparable {
     case .routerUnreachable: "router not answering"
     case .internet: "internet provider"
     case .busy: "busy connection"
+    case .accessPointSpikes: "lag spikes on Wi-Fi"
+    case .bridgeSpikes: "lag spikes on " + (bridge ?? "the link between access point and router")
+    case .internetSpikes: "lag spikes on the internet"
     }
   }
 }
@@ -152,5 +188,31 @@ extension Incident {
   private static func describe(_ link: IncidentLink) -> String {
     let worst = link.worstMedian.map { String(format: "worst %.0f ms", $0) } ?? "no reply"
     return worst + String(format: ", %.0f%% lost", link.loss * 100)
+  }
+}
+
+// Explicit nulls, matching the rest of the JSON output.
+
+extension IncidentLink {
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(worstMedian, forKey: .worstMedian)
+    try container.encode(loss, forKey: .loss)
+  }
+}
+
+extension Incident {
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(start, forKey: .start)
+    try container.encode(end, forKey: .end)
+    try container.encode(ssid, forKey: .ssid)
+    try container.encode(verdict, forKey: .verdict)
+    try container.encode(problemMinutes, forKey: .problemMinutes)
+    try container.encode(accessPoint, forKey: .accessPoint)
+    try container.encode(router, forKey: .router)
+    try container.encode(internet, forKey: .internet)
+    try container.encode(received, forKey: .received)
+    try container.encode(sent, forKey: .sent)
   }
 }

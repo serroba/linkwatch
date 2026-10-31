@@ -133,3 +133,29 @@ public struct WeekHistory: Sendable {
     )
   }
 }
+
+// Explicit nulls, so every stored and reported minute lists all fields.
+
+extension TargetSummary {
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(median, forKey: .median)
+    try container.encode(p95, forKey: .p95)
+    try container.encode(loss, forKey: .loss)
+  }
+}
+
+extension MinuteSummary {
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(start, forKey: .start)
+    try container.encode(ssid, forKey: .ssid)
+    try container.encode(samples, forKey: .samples)
+    try container.encode(accessPoint, forKey: .accessPoint)
+    try container.encode(router, forKey: .router)
+    try container.encode(internet, forKey: .internet)
+    try container.encode(received, forKey: .received)
+    try container.encode(sent, forKey: .sent)
+    try container.encode(worstHealth, forKey: .worstHealth)
+  }
+}

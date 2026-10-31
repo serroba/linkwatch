@@ -41,9 +41,13 @@ private func minute(
 }
 
 @Test func incidentVerdictIsTheMostCommonWithActionableTies() {
-  let majority = [minute(0, router: 80), minute(1, router: nil), minute(2, router: nil)]
-  #expect(IncidentTimeline.incidents(from: majority, profiles: []).first?.verdict == .routerSilent)
-  let tie = [minute(0, router: 80), minute(1, router: nil)]
+  var spiky = minute(2, router: 8)
+  spiky.router = target(8, 400, loss: 0)
+  let majority = [minute(0, router: 80), minute(1, router: 80), spiky]
+  #expect(IncidentTimeline.incidents(from: majority, profiles: []).first?.verdict == .bridge)
+  spiky = minute(1, router: 8)
+  spiky.router = target(8, 400, loss: 0)
+  let tie = [minute(0, router: 80), spiky]
   #expect(IncidentTimeline.incidents(from: tie, profiles: []).first?.verdict == .bridge)
   #expect(Verdict.busy < .bridge)
 }
@@ -64,14 +68,14 @@ private func minute(
 
 @Test func incidentEvidenceAndSummaryAreReadable() throws {
   var lossy = minute(1, router: 120)
-  lossy.router = target(120, 150, loss: 0.5)
+  lossy.router = target(120, 150, loss: 0.3)
   let minutes = [minute(0, router: 80), lossy, minute(2, router: 60, internet: nil)]
   let incident = try #require(IncidentTimeline.incidents(from: minutes, profiles: []).first)
   #expect(incident.router.worstMedian == 120)
-  #expect(incident.router.loss == 0.5 / 3)
+  #expect(abs(incident.router.loss - 0.1) < 1e-9)
   #expect(incident.internet?.loss == 1.0 / 3)
   #expect(incident.duration == 180)
-  #expect(incident.evidence.hasPrefix("AP worst 3 ms, 0% lost · router worst 120 ms, 17% lost"))
+  #expect(incident.evidence.hasPrefix("AP worst 3 ms, 0% lost · router worst 120 ms, 10% lost"))
   #expect(incident.summary(bridge: "TP-Link").hasSuffix("(3 min) on Home: TP-Link"))
   #expect(incident.summary(bridge: nil).hasSuffix("link between access point and router"))
   #expect(try JSONDecoder().decode(Incident.self, from: JSONEncoder().encode(incident)) == incident)

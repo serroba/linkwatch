@@ -15,6 +15,7 @@ how things are:
 | Orange globe | Your internet provider is having trouble. | Nothing to fix at home. Wait, or contact the provider if it lasts. |
 | Red warning | A device at home needs attention. | Open the panel: it says which device to restart. |
 | Purple stop | LinkWatch cannot reach the router, usually because of a permission. | See "The router is not answering" below. |
+| Orange pulse | The connection is mostly fine but has frequent short lag spikes, which make calls and video stutter. | If it bothers you, do what the panel suggests, usually restarting the TP-Link. |
 | Grey pause | LinkWatch is not watching: paused, not set up for this network, or missing a permission. | Open the panel to see why. |
 
 The numbers next to it are how long, in milliseconds, the access point (`AP`) and

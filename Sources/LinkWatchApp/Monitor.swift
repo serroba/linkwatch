@@ -19,11 +19,17 @@ final class Monitor: ObservableObject {
   private let pathMonitor = NWPathMonitor()
   private var observers: [any NSObjectProtocol] = []
 
-  init() {
+  /// Only the menu bar app records history; command-line runs read it, so they can never
+  /// race the app's appends with a rewrite.
+  init(recordsHistory: Bool = false) {
     environment = SystemEnvironment()
+    let history: any HistoryStore =
+      recordsHistory
+      ? FileHistoryStore(directory: Self.supportDirectory)
+      : ReadOnlyHistoryStore(directory: Self.supportDirectory)
     controller = MonitorController(
       environment: environment, probe: ICMPLatencyProbe(), store: UserDefaultsProfileStore(),
-      history: FileHistoryStore(directory: Self.supportDirectory),
+      history: history,
       uptime: { ProcessInfo.processInfo.systemUptime }, now: { Date() })
     environment.onAuthorizationChange = { [weak controller] in controller?.refresh() }
     observeLifecycle()
@@ -31,7 +37,7 @@ final class Monitor: ObservableObject {
 
   /// Starts the refresh and probe loops that drive the menu bar interface.
   static func forInterface() -> Monitor {
-    let monitor = Monitor()
+    let monitor = Monitor(recordsHistory: true)
     monitor.startLoops()
     LoginItem.applyPreference()
     return monitor
