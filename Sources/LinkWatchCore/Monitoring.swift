@@ -56,6 +56,7 @@ public struct MonitoringWindow: Sendable {
   public private(set) var health: Health = .healthy
   public private(set) var pendingSince: TimeInterval?
   private var pending: Health?
+  private var assessed: Health = .healthy
   public let thresholds: Thresholds
   public let capacity: Int
   public let historyCapacity: Int
@@ -93,6 +94,7 @@ public struct MonitoringWindow: Sendable {
       pendingSince = nil
       return
     }
+    health = assessed
     guard let accessPoint = accessPointMedian, let router = routerMedian else { return }
     let desired: Health
     if accessPoint > thresholds.slow && router > thresholds.slow {
@@ -120,6 +122,7 @@ public struct MonitoringWindow: Sendable {
       let duration = desired == .healthy ? thresholds.recoverySeconds : thresholds.sustainedSeconds
       if let since = pendingSince, pair.elapsed - since >= duration {
         health = desired
+        assessed = desired
         pending = nil
         pendingSince = nil
       }

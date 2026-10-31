@@ -71,6 +71,29 @@ private func pair(_ elapsed: Double, ap: Double = 1, router: Double = 2) -> Prob
   #expect(window.health == .bothSlow)
 }
 
+@Test func unreachableClearsWhenBothTargetsReplyAgain() {
+  var window = MonitoringWindow()
+  for elapsed in stride(from: 0.0, through: 8, by: 2) {
+    window.append(pair(elapsed, ap: 5, router: 20))
+  }
+  window.append(ProbePair(elapsed: 10, accessPoint: .success(milliseconds: 5), router: .timeout))
+  #expect(window.health == .unreachable(accessPoint: false, router: true))
+  window.append(pair(12, ap: 5, router: 20))
+  #expect(window.health == .healthy)
+}
+
+@Test func singleFailureDoesNotDiscardActiveAlert() {
+  var window = MonitoringWindow()
+  for elapsed in stride(from: 0.0, through: 10, by: 2) {
+    window.append(pair(elapsed, router: 50))
+  }
+  #expect(window.health == .routerSlower)
+  window.append(ProbePair(elapsed: 12, accessPoint: .timeout, router: .success(milliseconds: 50)))
+  #expect(window.health == .unreachable(accessPoint: true, router: false))
+  window.append(pair(14, router: 50))
+  #expect(window.health == .routerSlower)
+}
+
 @Test func displayHistoryOutlivesStatisticsWindow() {
   var window = MonitoringWindow(capacity: 5, historyCapacity: 8)
   for index in 0..<20 { window.append(pair(Double(index))) }
