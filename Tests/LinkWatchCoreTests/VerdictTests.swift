@@ -117,9 +117,10 @@ private struct Case {
   let report = StatusReport(controller: harness.controller, now: harness.clock.now)
   #expect(report.verdict == .bridge)
   #expect(report.action == "Restart the TP-Link powerline adapters.")
+  #expect(report.light == .actionNeeded)
   #expect(
     report.text.hasPrefix(
-      "Verdict:     The connection between the access point and the router (TP-Link powerline adapters) is struggling. → Restart the TP-Link powerline adapters."
+      "Verdict:     [actionNeeded] The connection between the access point and the router (TP-Link powerline adapters) is struggling. → Restart the TP-Link powerline adapters."
     ))
 
   harness.script.outcomes["192.0.2.1"] = nil
@@ -141,4 +142,22 @@ private struct Case {
   #expect(harness.controller.verdict == .bridge)
   harness.controller.paused = true
   #expect(harness.controller.verdict == .allClear)
+}
+
+@MainActor
+@Test func menuBarLightFollowsTheVerdict() async {
+  let harness = Harness(profiles: nil)
+  #expect(harness.controller.light == .idle)
+  let monitored = Harness()
+  _ = await monitored.cycle()
+  #expect(monitored.controller.light == .good)
+  monitored.script.outcomes["192.0.2.1"] = .success(milliseconds: 80)
+  for _ in 0..<8 { _ = await monitored.cycle() }
+  #expect(monitored.controller.light == .actionNeeded)
+  monitored.script.outcomes["192.0.2.1"] = .timeout
+  for _ in 0..<8 { _ = await monitored.cycle() }
+  #expect(monitored.controller.verdict == .routerUnreachable)
+  #expect(monitored.controller.light == .routerQuiet)
+  monitored.controller.paused = true
+  #expect(monitored.controller.light == .idle)
 }

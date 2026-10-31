@@ -28,3 +28,30 @@ extension MonitorController {
     return (verdict.headline(bridge: bridge), verdict.action(bridge: bridge))
   }
 }
+
+/// The menu bar colour: what the current verdict means for the person looking at it.
+public enum StatusLight: String, Codable, Equatable, Sendable {
+  /// Not monitoring: paused, unknown network, no permission or no samples yet.
+  case idle
+  case good
+  /// The Mac's own transfer is slowing things; nothing is broken.
+  case busy
+  case internet
+  /// A home link needs action, such as restarting powerline adapters.
+  case actionNeeded
+  /// The router is not answering LinkWatch; often a permission rather than a fault.
+  case routerQuiet
+}
+
+extension MonitorController {
+  public var light: StatusLight {
+    guard displayState != .idle else { return .idle }
+    switch verdict {
+    case .allClear: return .good
+    case .busy: return .busy
+    case .internet: return .internet
+    case .bridge, .accessPoint: return .actionNeeded
+    case .routerSilent, .routerUnreachable: return .routerQuiet
+    }
+  }
+}

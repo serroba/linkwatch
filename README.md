@@ -21,11 +21,16 @@ day or week, the
 router-minus-AP difference, the active network and the duration of an alert.
 Pause controls and local network-profile settings make monitoring explicit.
 
-- **Green check:** no sustained degradation detected.
-- **Red warning:** the router is persistently slower than the configured AP.
-- **Amber warning:** both targets are slow; local Wi-Fi or laptop delay may be involved.
-- **Purple stop:** a target is unreachable, identified by name and shown as `—`, never zero.
-- **Grey pause:** monitoring is paused, the network is unselected, or Wi-Fi identity is unavailable.
+The menu bar icon is coloured by the current verdict, so the state is visible
+without opening anything:
+
+- **Green check:** everything is working normally.
+- **Yellow arrows:** busy; the Mac's own large transfer is slowing things, nothing is broken.
+- **Orange globe:** the internet provider is having trouble; nothing to fix at home.
+- **Red warning:** a home link needs action, such as the access point or the bridge
+  (for example powerline adapters) between the access point and the router.
+- **Purple stop:** the router is not answering LinkWatch, often a permission rather than a fault.
+- **Grey pause:** not monitoring: paused, unselected network or missing permission.
 
 Numbers and explanatory text accompany colour so the state remains understandable
 without relying on colour alone. Desktop notifications are off by default.
