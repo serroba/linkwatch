@@ -91,6 +91,9 @@ not yet signed by Apple, so macOS may ask again.
 - **Test a suspect device** in 90 seconds: type its name (for example *desk*) next to
   **Test** and follow the prompts: 30 seconds as usual, 30 seconds with it on (or
   moving), 30 seconds off. LinkWatch then says which link, if any, it disturbs.
+- **Stay up to date**: when a new release is out, the panel shows **LinkWatch X is
+  available**; click **Install update**. LinkWatch checks GitHub once a day, which
+  you can turn off in Settings.
 - **Share a report** when someone else looks after the network: click **Export
   report…**. LinkWatch saves a folder with the last week's diagnosis and
   measurements and shows it in Finder, ready to send by AirDrop or Messages. It
