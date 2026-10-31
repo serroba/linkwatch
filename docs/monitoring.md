@@ -22,8 +22,9 @@ are configurable observations, not proof of a particular faulty component.
 ## Network discovery
 
 Discovery runs when the Wi-Fi identity or the network path changes, not on every
-refresh. The router comes from the global IPv4 state only when its primary
-interface is the Wi-Fi interface. Neighbours come from the kernel ARP cache via
+refresh. The router comes from the IPv4 state of the network service bound to the
+Wi-Fi interface, so a VPN owning the default route does not hide it; services that
+disagree leave it unknown. Neighbours come from the kernel ARP cache via
 `sysctl` and are limited to the Wi-Fi interface. A neighbour matches the BSSID when
 its hardware address is identical, or differs only in the locally administered bit
 and by at most seven in the last byte, which is how vendors usually derive radio

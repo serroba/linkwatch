@@ -1,3 +1,4 @@
 disable_update_check: true
 relative_results: true
 strict: true
+retain_codable_properties: true

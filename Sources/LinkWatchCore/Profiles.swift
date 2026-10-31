@@ -25,20 +25,25 @@ public struct NetworkProfile: Codable, Equatable, Identifiable, Sendable {
   }
 
   public static func validAddress(_ address: String) -> Bool {
+    guard let bytes = octets(address) else { return false }
+    return bytes[0] > 0 && bytes[0] < 224 && bytes[0] != 127
+  }
+
+  /// Parses dotted-decimal IPv4 without leading zeros, which some parsers treat as octal.
+  public static func octets(_ address: String) -> [UInt8]? {
     let components = address.split(separator: ".", omittingEmptySubsequences: false)
-    guard components.count == 4 else { return false }
+    guard components.count == 4 else { return nil }
     let bytes = components.compactMap { component -> UInt8? in
       guard component.allSatisfy({ $0.isASCII && $0.isNumber }),
         component.count == 1 || component.first != "0"
       else { return nil }
       return UInt8(component)
     }
-    return bytes.count == 4 && bytes[0] > 0 && bytes[0] < 224 && bytes[0] != 127
-      && address != "255.255.255.255"
+    return bytes.count == 4 ? bytes : nil
   }
 }
 
-public struct NetworkIdentity: Equatable, Sendable {
+public struct NetworkIdentity: Codable, Equatable, Sendable {
   public let ssid: String
   public let bssid: String
   public let interface: String
