@@ -3,9 +3,17 @@
 # makes LinkWatch, not the terminal, the process responsible for Location access, so
 # macOS reveals the Wi-Fi name; output streams back through private named pipes.
 set -euo pipefail
-app="$(cd "$(dirname "$0")/.." && pwd)/dist/LinkWatch.app"
-if [[ ! -x "$app/Contents/MacOS/LinkWatch" ]]; then
-  echo "LinkWatch: $app not found; run scripts/build_app.sh first" >&2
+# Prefer LINKWATCH_APP, then this checkout's build, then an installed copy.
+app=""
+for candidate in "${LINKWATCH_APP:-}" "$(cd "$(dirname "$0")/.." && pwd)/dist/LinkWatch.app" \
+  /Applications/LinkWatch.app "$HOME/Applications/LinkWatch.app"; do
+  if [[ -n "$candidate" && -x "$candidate/Contents/MacOS/LinkWatch" ]]; then
+    app="$candidate"
+    break
+  fi
+done
+if [[ -z "$app" ]]; then
+  echo "LinkWatch: no LinkWatch.app found; install it or run scripts/build_app.sh" >&2
   exit 69
 fi
 run_dir="$(mktemp -d)"

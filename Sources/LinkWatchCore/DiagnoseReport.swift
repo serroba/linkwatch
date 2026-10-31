@@ -8,6 +8,8 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
   }
 
   public var generatedAt: Date
+  /// The LinkWatch version that produced the report, such as `0.2.0`.
+  public var appVersion: String?
   public var hours: Int
   /// Whether the menu bar app answered; otherwise `status` is a fresh local reading.
   public var appRunning: Bool
@@ -26,11 +28,13 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
 
   public init(
     status: StatusReport, appRunning: Bool, minutes: [MinuteSummary],
-    profiles: [NetworkProfile], hours: Int, now: Date, primaryInterface: String?
+    profiles: [NetworkProfile], hours: Int, now: Date, primaryInterface: String?,
+    appVersion: String? = nil
   ) {
     let since = now.addingTimeInterval(-Double(hours) * 3600)
     let window = minutes.filter { $0.start >= since && $0.start <= now }
     generatedAt = now
+    self.appVersion = appVersion
     self.hours = hours
     self.appRunning = appRunning
     self.status = status
@@ -105,7 +109,8 @@ extension DiagnoseReport {
     let time = DateFormatter()
     time.setLocalizedDateFormatFromTemplate("EEE d MMM HH:mm")
     var lines = [
-      "LinkWatch diagnosis for the last \(hours) h (generated \(time.string(from: generatedAt)))",
+      "LinkWatch" + (appVersion.map { " \($0)" } ?? "")
+        + " diagnosis for the last \(hours) h (generated \(time.string(from: generatedAt)))",
       "",
       "Now",
     ]

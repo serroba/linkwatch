@@ -1,6 +1,8 @@
 # Contributing
 
-The project objective and product boundaries live in [README.md](README.md).
+The project objective lives in [README.md](README.md), the plan in
+[docs/roadmap.md](docs/roadmap.md) and the code structure in
+[docs/architecture.md](docs/architecture.md).
 Make small commits and keep checks green. Do not spawn parallel agents unless
 explicitly authorised.
 
@@ -60,6 +62,36 @@ and applicable Swift results. Check the latest PR commit and all pipeline jobs
 before merging. Routine tests are authorised; reuse approved commands instead of
 requesting repeated permission. Actual execution-policy blocks must be reported
 accurately, without treating sandbox network failures as invalid credentials.
+
+## Running the app locally
+
+```sh
+bash scripts/build_app.sh
+osascript -e 'quit app "LinkWatch"'; open dist/LinkWatch.app
+scripts/linkwatch diagnose
+```
+
+Quit and reopen the app after every rebuild. `build_app.sh` replaces the bundle in
+place, and a copy that keeps running from the replaced bundle no longer matches its
+code signature, so macOS stops granting it Local Network access and the router looks
+silent. Use `scripts/linkwatch`, not the bare executable, for commands; see
+[docs/cli.md](docs/cli.md).
+
+## Documentation
+
+Behaviour changes update the documents that describe them in the same pull request:
+[monitoring semantics](docs/monitoring.md) for rules, the [user guide](docs/user-guide.md)
+for anything a user sees, [command line](docs/cli.md) for commands,
+[privacy](docs/privacy.md) for anything measured, sent or stored, and the
+[roadmap](docs/roadmap.md) when an item ships. Keep the
+[`diagnose-network` skill](.claude/skills/diagnose-network/SKILL.md) in step with
+verdicts and commands.
+
+## Releases
+
+Push a `vX.Y.Z` tag to publish a release; see
+[docs/install.md](docs/install.md#for-maintainers-publishing-a-release), including
+the optional signing identity.
 
 ## Local signing
 
