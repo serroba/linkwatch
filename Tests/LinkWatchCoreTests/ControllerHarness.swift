@@ -89,7 +89,6 @@ final class Clock {
 final class FakeEventStore: EventStore {
   var saved: [AppEvent] = []
   func append(_ event: AppEvent) throws { saved.append(event) }
-  func load(since date: Date) throws -> [AppEvent] { saved.filter { $0.time >= date } }
   func prune(before date: Date) throws { saved.removeAll { $0.time < date } }
 
   var kinds: [AppEvent.Kind] { saved.map(\.kind) }
