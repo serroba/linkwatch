@@ -14,6 +14,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case setProfile(ProfileUpdate)
   case removeProfile(ssid: String)
   case history(hours: Int, json: Bool)
+  case incidents(days: Int, json: Bool)
   case clearHistory
   case help
 
@@ -58,6 +59,8 @@ public enum HeadlessCommand: Equatable, Sendable {
                              in advice such as "Restart the TP-Link powerline adapters".
       profile remove NAME    Delete a profile; its network is no longer probed.
       history clear          Delete the stored week of history, as in Settings.
+      incidents [--days N]   List problems in the last N days (default 7): when, how long,
+                             the most likely cause and the evidence for each link.
       authorize              Report Location permission, which is granted from the app's
                              Settings window because macOS prompts only for the app.
       help                   Show this help.
@@ -79,6 +82,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "probe": return try probe(options, json: json)
     case "profile": return try profile(options, json: json)
     case "history": return try history(options, json: json)
+    case "incidents": return try incidents(options, json: json)
     default:
       let local = take(flag: "--local", from: &options)
       guard let simple = simple(name, json: json, local: local) else { return nil }
@@ -158,6 +162,16 @@ public enum HeadlessCommand: Equatable, Sendable {
     guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
     try requireEmpty(options)
     return .history(hours: hours, json: json)
+  }
+
+  private static func incidents(_ arguments: [String], json: Bool) throws(UsageError)
+    -> HeadlessCommand
+  {
+    var options = arguments
+    let days = try take(count: "--days", from: &options) ?? 7
+    guard days <= 7 else { throw UsageError(description: "--days must be at most 7") }
+    try requireEmpty(options)
+    return .incidents(days: days, json: json)
   }
 
   private static func requireEmpty(_ options: [String]) throws(UsageError) {

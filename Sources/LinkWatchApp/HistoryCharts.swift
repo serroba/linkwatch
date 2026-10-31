@@ -78,3 +78,26 @@ struct HistoryChart: View {
     }
   }
 }
+
+/// The last day's incidents, so "it wasn't working earlier" has an answer.
+struct RecentProblems: View {
+  let monitor: MonitorController
+
+  var body: some View {
+    let incidents = monitor.recentIncidents
+    if !incidents.isEmpty {
+      VStack(alignment: .leading, spacing: 4) {
+        Text("Problems in the last 24 hours").font(.caption).foregroundStyle(.secondary)
+        ForEach(incidents.prefix(3), id: \.start) { incident in
+          let bridge = monitor.profiles.first { $0.ssid == incident.ssid }?.bridgeName
+          Text(incident.summary(bridge: bridge)).font(.caption)
+            .help(incident.evidence)
+        }
+        if incidents.count > 3 {
+          Text("\(incidents.count - 3) more: scripts/linkwatch incidents")
+            .font(.caption2).foregroundStyle(.secondary)
+        }
+      }
+    }
+  }
+}

@@ -21,11 +21,16 @@ day or week, the
 router-minus-AP difference, the active network and the duration of an alert.
 Pause controls and local network-profile settings make monitoring explicit.
 
-- **Green check:** no sustained degradation detected.
-- **Red warning:** the router is persistently slower than the configured AP.
-- **Amber warning:** both targets are slow; local Wi-Fi or laptop delay may be involved.
-- **Purple stop:** a target is unreachable, identified by name and shown as `—`, never zero.
-- **Grey pause:** monitoring is paused, the network is unselected, or Wi-Fi identity is unavailable.
+The menu bar icon is coloured by the current verdict, so the state is visible
+without opening anything:
+
+- **Green check:** everything is working normally.
+- **Yellow arrows:** busy; the Mac's own large transfer is slowing things, nothing is broken.
+- **Orange globe:** the internet provider is having trouble; nothing to fix at home.
+- **Red warning:** a home link needs action, such as the access point or the bridge
+  (for example powerline adapters) between the access point and the router.
+- **Purple stop:** the router is not answering LinkWatch, often a permission rather than a fault.
+- **Grey pause:** not monitoring: paused, unselected network or missing permission.
 
 Numbers and explanatory text accompany colour so the state remains understandable
 without relying on colour alone. Desktop notifications are off by default.
@@ -134,36 +139,43 @@ Planned work, in order:
    differences are evidence, not proof of a faulty device.
    *Status:* implemented live, in `status` and in hourly history; the exact rules are
    in [monitoring semantics](docs/monitoring.md#verdict). Wi-Fi signal and tether
-   rows follow with items 7 and 9.
-3. **Incident timeline.** Consecutive problem minutes grouped into incidents with
+   rows follow with items 8 and 10.
+3. **Incident timeline** (*implemented*). Consecutive problem minutes grouped into incidents with
    start, end, the failing link and the verdict, for example "yesterday 19:40–20:05:
    the link between the AP and the router failed (router 100% loss, AP and internet
    fine)". Shown in the app and by `scripts/linkwatch incidents --days 7`.
-4. **Shareable report.** An **Export report** button that writes a short text and
+4. **Ask an agent "what's going on with my network?"** A `diagnose` command bundles
+   everything needed to answer from evidence: current status and verdict,
+   permissions, recent incidents with per-link evidence, hourly summaries, profile
+   setup and **coverage** (which periods were actually monitored, so "no incidents"
+   is never confused with "not watching"). A project skill tells coding agents to run
+   it, explain the verdict in plain words, cite the evidence, and state data gaps
+   instead of guessing.
+5. **Shareable report.** An **Export report** button that writes a short text and
    JSON summary of recent incidents and minute data, to send by AirDrop or message to
    whoever looks after the network. It contains local addresses, so it is only
    created on request and never sent automatically.
-5. **Releases.** Versioned builds from CI attached to GitHub Releases on each tag,
+6. **Releases.** Versioned builds from CI attached to GitHub Releases on each tag,
    then an easy update path (a Homebrew tap or an in-app update notice), so new
    versions install on another Mac without building. A clean install needs an Apple
    Developer ID and notarisation; without it, Gatekeeper requires right-click › Open
    for each release. The signing key would live in CI secrets, so its handling must
    be decided deliberately.
-6. **Usage patterns** (*implemented*). Download and upload rates from the Wi-Fi
+7. **Usage patterns** (*implemented*). Download and upload rates from the Wi-Fi
    interface's byte counters, live and per stored minute, with no extra traffic and
    nothing about applications or destinations. A slow link while the Mac itself is
    moving a lot of data is reported as **busy** rather than as a failing device, and
    history shows megabytes per hour.
-7. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
+8. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
    no extra traffic, to separate "move closer" from "the access point is struggling".
-8. **Simple mode.** Only the coloured icon and the sentence, with details one click
+9. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes.
-9. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
+10. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
    marks the path as expensive and the first hop is also the router; the verdicts
    switch to phone wording without setup.
-10. **"I restarted it."** Record a restart in the history and show its effect a few
+11. **"I restarted it."** Record a restart in the history and show its effect a few
    minutes later, for example "router latency 85 → 4 ms".
-11. **Weekly summary.** From the stored week: incidents per link, typical duration
+12. **Weekly summary.** From the stored week: incidents per link, typical duration
     and time-of-day patterns, to decide whether to move or replace equipment.
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
@@ -214,6 +226,7 @@ scripts/linkwatch profile list | set --ssid NAME [--ap A] [--router R] [--differ
 scripts/linkwatch profile remove NAME
 scripts/linkwatch history --hours 6 # hourly latency, loss, MB down/up and verdicts (--json: minutes)
 scripts/linkwatch history clear     # delete the stored week, as in Settings
+scripts/linkwatch incidents --days 7 # problems: when, how long, likely cause, evidence
 scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
 scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test
 scripts/linkwatch authorize         # ask the running app to request Location permission

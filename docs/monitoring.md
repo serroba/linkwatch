@@ -62,6 +62,18 @@ The live verdict changes only after the new verdict has held for the alert time
 (or the recovery time when clearing), and resets on any network change. Stored
 minutes are classified when read, so improved rules apply to the whole week.
 
+## Incidents
+
+Stored minutes are classified with the verdict rules (with each network's thresholds
+and busiest minute) and problem minutes are grouped per network into incidents.
+Up to two clear or missing minutes inside a run still count as one incident, so a
+flapping link reads as one problem; runs of fewer than two problem minutes are
+treated as blips. An incident's verdict is its most common problem verdict, with
+ties resolved towards the one needing action (bridge, access point, internet,
+router, busy). Evidence per link is the slowest minute median and the
+sample-weighted loss, plus bytes moved. Incidents are computed when read, so rule
+changes apply to the whole week.
+
 ## Usage
 
 Each cycle reads the Wi-Fi interface's 64-bit byte counters from the kernel
