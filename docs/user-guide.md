@@ -55,6 +55,13 @@ LinkWatch only watches networks you approve.
 If a network's router or access point changes later, LinkWatch offers to **Update
 profile**; it never changes settings by itself.
 
+## After a restart
+
+LinkWatch opens at login, so it keeps watching after the Mac restarts; macOS lists it
+in **System Settings › General › Login Items**. Saved networks and the week of
+history are kept on disk, so nothing is lost when LinkWatch or the Mac restarts. To
+stop it opening at login, switch off **Open LinkWatch at login** in Settings.
+
 ## Common questions
 
 **The router is not answering, but the internet works.** macOS is probably blocking

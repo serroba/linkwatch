@@ -10,6 +10,8 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
   public var generatedAt: Date
   /// The LinkWatch version that produced the report, such as `0.2.0`.
   public var appVersion: String?
+  /// Whether LinkWatch starts at login, so recording resumes after a restart.
+  public var opensAtLogin: Bool
   public var hours: Int
   /// Whether the menu bar app answered; otherwise `status` is a fresh local reading.
   public var appRunning: Bool
@@ -29,12 +31,13 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
   public init(
     status: StatusReport, appRunning: Bool, minutes: [MinuteSummary],
     profiles: [NetworkProfile], hours: Int, now: Date, primaryInterface: String?,
-    appVersion: String? = nil
+    appVersion: String? = nil, opensAtLogin: Bool = true
   ) {
     let since = now.addingTimeInterval(-Double(hours) * 3600)
     let window = minutes.filter { $0.start >= since && $0.start <= now }
     generatedAt = now
     self.appVersion = appVersion
+    self.opensAtLogin = opensAtLogin
     self.hours = hours
     self.appRunning = appRunning
     self.status = status
@@ -75,6 +78,11 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
       )
     }
     if profiles.isEmpty { notes.append("No network is set up for monitoring yet.") }
+    if !report.opensAtLogin {
+      notes.append(
+        "LinkWatch does not open at login, so nothing is recorded after a restart until it is opened. Turn it on with open-at-login on or in Settings."
+      )
+    }
     if !status.permitted {
       notes.append(
         "Location permission is missing, so the Wi-Fi network cannot be identified or monitored.")

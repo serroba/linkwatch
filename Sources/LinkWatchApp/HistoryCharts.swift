@@ -36,16 +36,38 @@ struct WeekChart: View {
   }
 }
 
+/// The last hour: raw two-second pairs since launch, and stored minute medians before
+/// that, so a restart does not blank the chart.
 struct HistoryChart: View {
   let history: [ProbePair]
+  /// Stored minutes from the last hour on this network.
+  let stored: [MinuteSummary]
 
   var body: some View {
     let latest = history.last?.elapsed ?? 0
+    let rawSeconds = history.first.map { latest - $0.elapsed } ?? 0
+    let rawStart = Date().addingTimeInterval(-rawSeconds)
+    let earlier = stored.filter { $0.start.addingTimeInterval(60) <= rawStart }
     let failures = history.filter { $0.accessPoint.latency == nil || $0.router.latency == nil }
+    let span = earlier.first.map { -$0.start.timeIntervalSinceNow } ?? rawSeconds
     VStack(alignment: .leading, spacing: 4) {
-      Text("Last \(max(1, Int(((history.first.map { latest - $0.elapsed }) ?? 0) / 60))) min")
-        .font(.caption).foregroundStyle(.secondary)
+      Text(
+        "Last \(max(1, min(60, Int(span / 60)))) min"
+          + (earlier.isEmpty ? "" : " (per-minute medians before LinkWatch started)")
+      )
+      .font(.caption).foregroundStyle(.secondary)
       Chart {
+        ForEach(earlier, id: \.start) { minute in
+          let minutesAgo = minute.start.addingTimeInterval(30).timeIntervalSinceNow / 60
+          if let median = minute.accessPoint.median {
+            LineMark(x: .value("Minutes", minutesAgo), y: .value("ms", median))
+              .foregroundStyle(by: .value("Target", "AP"))
+          }
+          if let median = minute.router.median {
+            LineMark(x: .value("Minutes", minutesAgo), y: .value("ms", median))
+              .foregroundStyle(by: .value("Target", "Router"))
+          }
+        }
         ForEach(Array(history.enumerated()), id: \.offset) { _, pair in
           let minutesAgo = (pair.elapsed - latest) / 60
           if let latency = pair.accessPoint.latency {

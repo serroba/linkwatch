@@ -37,43 +37,6 @@ private func latencyText(_ value: Double?) -> String {
   value.map { String(format: "%.0f", $0) } ?? "—"
 }
 
-extension StatusLight {
-  private var color: NSColor {
-    switch self {
-    case .idle: .systemGray
-    case .good: .systemGreen
-    case .busy: .systemYellow
-    case .internet: .systemOrange
-    case .actionNeeded: .systemRed
-    case .routerQuiet: .systemPurple
-    }
-  }
-
-  /// Distinct shapes as well as colours, so the state never depends on colour alone.
-  private var symbol: String {
-    switch self {
-    case .idle: "pause.circle.fill"
-    case .good: "checkmark.circle.fill"
-    case .busy: "arrow.up.arrow.down.circle.fill"
-    case .internet: "globe"
-    case .actionNeeded: "exclamationmark.triangle.fill"
-    case .routerQuiet: "xmark.octagon.fill"
-    }
-  }
-
-  /// Menu bar images are monochrome templates by default, which drops the colour; a
-  /// palette-coloured non-template image keeps it visible without opening the panel.
-  fileprivate var menuBarImage: NSImage {
-    let configuration = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
-      .applying(NSImage.SymbolConfiguration(paletteColors: [color]))
-    let image =
-      NSImage(systemSymbolName: symbol, accessibilityDescription: rawValue)?
-      .withSymbolConfiguration(configuration) ?? NSImage()
-    image.isTemplate = false
-    return image
-  }
-}
-
 /// The span shown by the panel's history chart.
 private enum ChartRange: String, CaseIterable, Identifiable {
   case hour = "1 h"
@@ -152,7 +115,12 @@ private struct DetailView: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         if options.range == .hour {
-          HistoryChart(history: monitor.session.window.history)
+          let hourAgo = Date().addingTimeInterval(-3600)
+          HistoryChart(
+            history: monitor.session.window.history,
+            stored: monitor.week.minutes.filter {
+              $0.start >= hourAgo && $0.ssid == monitor.session.profile?.ssid
+            })
         } else {
           let cutoff = Date().addingTimeInterval(-options.range.seconds)
           WeekChart(minutes: monitor.week.minutes.filter { $0.start >= cutoff })
@@ -271,6 +239,7 @@ private final class ProfileEditor: ObservableObject {
   @Published var draft = NetworkProfile(ssid: "", accessPoint: "", router: "")
   @Published var message = ""
   @Published var confirmingClear = false
+  @Published var opensAtLogin = LoginItem.isEnabled
 }
 
 private struct ProfileSettings: View {
@@ -363,6 +332,17 @@ private struct ProfileSettings: View {
       .disabled(!editor.draft.isValid)
       if !editor.message.isEmpty { Text(editor.message) }
       if let error = monitor.storageError { Text(error).foregroundStyle(.red) }
+      Section("Start") {
+        Toggle("Open LinkWatch at login", isOn: $editor.opensAtLogin)
+          .onChange(of: editor.opensAtLogin) { _, enabled in
+            try? LoginItem.set(enabled)
+            editor.opensAtLogin = LoginItem.isEnabled
+          }
+        Text(
+          "Keeps monitoring after a restart. Without it, nothing is recorded until LinkWatch is opened again."
+        )
+        .font(.caption).foregroundStyle(.secondary)
+      }
       Section("History") {
         Text(
           "\(monitor.week.minutes.count) minute summaries are stored on this Mac for up to 7 days."

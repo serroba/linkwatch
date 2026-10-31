@@ -94,6 +94,10 @@ router, and the most severe state seen (`healthy`, `bothSlow`, `routerSlower`,
 A minute is completed when the next minute or network begins, and is flushed on
 pause, sleep, network change and quit, so partial minutes are kept.
 
+Completed minutes are written immediately, so quitting or a crash loses at most the
+current partial minute, and a normal quit or shutdown flushes that too. After a
+restart the hour chart shows stored minute medians for the time before launch.
+
 Summaries are appended as JSON Lines to
 `~/Library/Application Support/io.github.serroba.LinkWatch/history.jsonl` (directory
 0700, file 0600); unreadable lines are skipped rather than discarding the week.

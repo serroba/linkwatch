@@ -17,6 +17,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case incidents(days: Int, json: Bool)
   case diagnose(hours: Int, json: Bool)
   case clearHistory
+  case openAtLogin(ProfileUpdate.Switch?)
   case help
 
   public struct UsageError: Error, Equatable, CustomStringConvertible {
@@ -65,6 +66,8 @@ public enum HeadlessCommand: Equatable, Sendable {
       history clear          Delete the stored week of history, as in Settings.
       incidents [--days N]   List problems in the last N days (default 7): when, how long,
                              the most likely cause and the evidence for each link.
+      open-at-login [on|off] Show or change whether LinkWatch starts at login, so monitoring
+                             resumes after a restart.
       authorize              Report Location permission, which is granted from the app's
                              Settings window because macOS prompts only for the app.
       help                   Show this help.
@@ -80,15 +83,11 @@ public enum HeadlessCommand: Equatable, Sendable {
     guard let name = arguments.first else { return nil }
     var options = Array(arguments.dropFirst())
     let json = take(flag: "--json", from: &options)
+    if let command = try withArguments(name, options, json: json) { return command }
     let command: HeadlessCommand
-    switch name {
-    case "watch": command = try watch(&options, json: json)
-    case "probe": return try probe(options, json: json)
-    case "profile": return try profile(options, json: json)
-    case "history": return try history(options, json: json)
-    case "incidents": return try incidents(options, json: json)
-    case "diagnose": return try diagnose(options, json: json)
-    default:
+    if name == "watch" {
+      command = try watch(&options, json: json)
+    } else {
       let local = take(flag: "--local", from: &options)
       guard let simple = simple(name, json: json, local: local) else { return nil }
       if local, simple != .status(json: json, local: true) {
@@ -98,6 +97,21 @@ public enum HeadlessCommand: Equatable, Sendable {
     }
     try requireEmpty(options)
     return command
+  }
+
+  /// Commands that parse their own arguments.
+  private static func withArguments(_ name: String, _ options: [String], json: Bool)
+    throws(UsageError) -> HeadlessCommand?
+  {
+    switch name {
+    case "probe": try probe(options, json: json)
+    case "profile": try profile(options, json: json)
+    case "history": try history(options, json: json)
+    case "incidents": try incidents(options, json: json)
+    case "diagnose": try diagnose(options, json: json)
+    case "open-at-login": try openAtLogin(options)
+    default: nil
+    }
   }
 
   private static func simple(_ name: String, json: Bool, local: Bool) -> HeadlessCommand? {
@@ -167,6 +181,15 @@ public enum HeadlessCommand: Equatable, Sendable {
     guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
     try requireEmpty(options)
     return .history(hours: hours, json: json)
+  }
+
+  private static func openAtLogin(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
+    switch arguments {
+    case []: return .openAtLogin(nil)
+    case ["on"]: return .openAtLogin(.enabled)
+    case ["off"]: return .openAtLogin(.disabled)
+    default: throw UsageError(description: "open-at-login takes on, off or nothing")
+    }
   }
 
   private static func diagnose(_ arguments: [String], json: Bool) throws(UsageError)

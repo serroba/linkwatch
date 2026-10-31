@@ -86,7 +86,7 @@ final class Clock {
   var date: Date { Date(timeIntervalSinceReferenceDate: 800_000_040 + now - 100) }
 }
 
-final class FakeHistoryStore: HistoryStore {
+class FakeHistoryStore: HistoryStore {
   var saved: [MinuteSummary] = []
   var failsToLoad = false
   var failsToWrite = false
