@@ -33,6 +33,10 @@ public struct MinuteSummary: Codable, Equatable, Sendable {
   /// Bytes the Mac received and sent on the interface during the minute; nil when unknown.
   public var received: UInt64?
   public var sent: UInt64?
+  /// Median Wi-Fi signal strength and noise (dBm) and transmit rate (Mbit/s) in the minute.
+  public var rssi: Int?
+  public var noise: Int?
+  public var transmitRate: Double?
   /// The most severe state seen during the minute: `healthy`, `bothSlow`, `routerSlower` or
   /// `unreachable`.
   public var worstHealth: String
@@ -57,6 +61,7 @@ public struct WeekHistory: Sendable {
   private var pairs: [ProbePair] = []
   private var worst = 0
   private var traffic: TrafficCounters?
+  private var signals: [WiFiSignal] = []
 
   public init(minutes: [MinuteSummary] = []) {
     self.minutes = minutes.sorted { $0.start < $1.start }
@@ -65,7 +70,7 @@ public struct WeekHistory: Sendable {
   /// Adds a pair; returns the previous minute's summary once a new minute or network begins.
   public mutating func record(
     _ pair: ProbePair, health: Health, ssid: String, at date: Date,
-    traffic delta: TrafficCounters? = nil
+    traffic delta: TrafficCounters? = nil, signal: WiFiSignal? = nil
   ) -> MinuteSummary? {
     let start = Self.minuteStart(date)
     let completed = start != minute || ssid != self.ssid ? flush() : nil
@@ -74,6 +79,7 @@ public struct WeekHistory: Sendable {
       self.ssid = ssid
     }
     pairs.append(pair)
+    if let signal { signals.append(signal) }
     worst = max(worst, Self.severity(health))
     if let delta {
       traffic = TrafficCounters(
@@ -90,6 +96,7 @@ public struct WeekHistory: Sendable {
       pairs = []
       worst = 0
       traffic = nil
+      signals = []
     }
     guard let minute, !pairs.isEmpty else { return nil }
     let summary = MinuteSummary(
@@ -98,7 +105,9 @@ public struct WeekHistory: Sendable {
       router: TargetSummary(pairs.map(\.router)),
       internet: pairs.contains { $0.internetBest != nil }
         ? TargetSummary(pairs.compactMap(\.internetBest)) : nil,
-      received: traffic?.received, sent: traffic?.sent, worstHealth: Self.labels[worst])
+      received: traffic?.received, sent: traffic?.sent,
+      rssi: Self.median(signals.map(\.rssi)), noise: Self.median(signals.map(\.noise)),
+      transmitRate: Self.median(signals.map(\.transmitRate)), worstHealth: Self.labels[worst])
     minutes.append(summary)
     return summary
   }
@@ -125,6 +134,11 @@ public struct WeekHistory: Sendable {
     case .routerSlower: 2
     case .unreachable: 3
     }
+  }
+
+  private static func median<Value: Comparable>(_ values: [Value]) -> Value? {
+    let sorted = values.sorted()
+    return sorted.isEmpty ? nil : sorted[sorted.count / 2]
   }
 
   private static func minuteStart(_ date: Date) -> Date {
@@ -156,6 +170,9 @@ extension MinuteSummary {
     try container.encode(internet, forKey: .internet)
     try container.encode(received, forKey: .received)
     try container.encode(sent, forKey: .sent)
+    try container.encode(rssi, forKey: .rssi)
+    try container.encode(noise, forKey: .noise)
+    try container.encode(transmitRate, forKey: .transmitRate)
     try container.encode(worstHealth, forKey: .worstHealth)
   }
 }

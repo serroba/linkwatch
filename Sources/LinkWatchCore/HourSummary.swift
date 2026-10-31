@@ -32,6 +32,8 @@ public struct HourSummary: Codable, Equatable, Sendable {
   public var received: UInt64?
   public var sent: UInt64?
   public var problemMinutes: Int
+  /// Median Wi-Fi signal strength in dBm across the hour's minutes.
+  public var rssi: Int?
   /// The most common problem verdict, or nil when every minute was clear.
   public var commonProblem: Verdict?
 
@@ -68,10 +70,16 @@ public enum HistoryRollup {
           ? nil : HourLink(probed.compactMap(\.internet), samples: probed.map(\.samples)),
         received: total(group.map(\.received)), sent: total(group.map(\.sent)),
         problemMinutes: problems.count,
+        rssi: medianRSSI(group),
         commonProblem: counts.max {
           $0.value < $1.value || ($0.value == $1.value && $0.key < $1.key)
         }?.key)
     }
+  }
+
+  private static func medianRSSI(_ minutes: [MinuteSummary]) -> Int? {
+    let values = minutes.compactMap(\.rssi).sorted()
+    return values.isEmpty ? nil : values[values.count / 2]
   }
 
   private static func total(_ values: [UInt64?]) -> UInt64? {
@@ -103,6 +111,7 @@ extension HourSummary {
     try container.encode(received, forKey: .received)
     try container.encode(sent, forKey: .sent)
     try container.encode(problemMinutes, forKey: .problemMinutes)
+    try container.encode(rssi, forKey: .rssi)
     try container.encode(commonProblem, forKey: .commonProblem)
   }
 }

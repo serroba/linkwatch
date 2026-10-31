@@ -35,6 +35,9 @@ final class FakeEnvironment: NetworkEnvironment {
 
   var counters: TrafficCounters?
   func traffic(on interface: String) -> TrafficCounters? { counters }
+
+  var wifiSignal: WiFiSignal?
+  func signal() -> WiFiSignal? { wifiSignal }
 }
 
 struct StoreFailure: Error {}

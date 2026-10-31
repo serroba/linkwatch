@@ -31,6 +31,9 @@ Click the icon to open the panel. From the top:
   slow moment never triggers it.
 - **Latency** for the access point, the router and the internet, and the
   difference between the router and the access point.
+- **Wi-Fi signal**: strength in dBm (closer to zero is stronger), how far above the
+  background noise it is, the link speed and the channel. *Weak* means moving closer
+  to the access point will help more than restarting anything.
 - **Usage**: how fast this Mac is downloading and uploading right now.
 - **The chart**: choose **1 h**, **24 h** or **7 d**. Red marks are minutes with a
   problem.

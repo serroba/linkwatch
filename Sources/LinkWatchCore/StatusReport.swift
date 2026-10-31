@@ -50,6 +50,8 @@ public struct StatusReport: Codable, Equatable, Sendable {
   public var reason: String
   public var permitted: Bool
   public var wifi: WiFiState
+  /// The Mac's Wi-Fi radio readings while monitoring.
+  public var signal: WiFiSignal?
   public var paused: Bool
   public var sleeping: Bool
   public var network: NetworkIdentity?
@@ -86,6 +88,7 @@ public struct StatusReport: Codable, Equatable, Sendable {
     reason = controller.reason
     permitted = controller.isPermitted
     wifi = controller.wifiState
+    signal = controller.signal
     paused = controller.paused
     sleeping = controller.sleeping
     network = controller.network
@@ -203,6 +206,7 @@ extension StatusReport {
     lines.append(latencyText)
     lines.append("Internet:    \(internetText)")
     lines.append("Usage:       \(usageText)")
+    lines.append("Signal:      " + (signal?.summary ?? "not measured"))
     if let deviceTest { lines.append("Device test: \(deviceTest.summary)") }
     lines.append(
       String(
@@ -292,6 +296,7 @@ extension StatusReport {
     try container.encode(reason, forKey: .reason)
     try container.encode(permitted, forKey: .permitted)
     try container.encode(wifi, forKey: .wifi)
+    try container.encode(signal, forKey: .signal)
     try container.encode(paused, forKey: .paused)
     try container.encode(sleeping, forKey: .sleeping)
     try container.encode(network, forKey: .network)

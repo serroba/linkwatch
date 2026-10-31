@@ -24,3 +24,7 @@ opt_in_rules:
   - unowned_variable_capture
   - weak_delegate
   - yoda_condition
+# Exhaustive switches over enums (verdict wording, labels) are flat mappings, not
+# branching logic; count only real branches.
+cyclomatic_complexity:
+  ignores_case_statements: true

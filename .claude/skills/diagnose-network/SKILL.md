@@ -68,7 +68,8 @@ already group problem minutes and name the most likely cause.
 | Verdict | Meaning | Evidence pattern |
 |---|---|---|
 | `allClear` | Working normally | All links fast, no loss |
-| `accessPoint` | Weak Wi-Fi signal or overloaded AP | AP slow or lossy |
+| `weakSignal` | The Mac's Wi-Fi signal is weak; move closer | AP slow, lossy or spiky with RSSI < −70 dBm or SNR < 20 dB |
+| `accessPoint` | Overloaded or failing AP | AP slow or lossy with a good signal (or signal unknown) |
 | `bridge` | The link between AP and router (e.g. powerline adapters) | AP fine, router slow or lost while the internet is also affected |
 | `routerSilent` | Router ignores pings, traffic still flows | Router lost, internet fine |
 | `routerUnreachable` | Router silent, no internet evidence | Router lost, internet not probed |
