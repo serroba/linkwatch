@@ -43,12 +43,15 @@ private func evidence(
 
 @Test func spikyStoredMinutesFormAnIncident() throws {
   let origin = Date(timeIntervalSinceReferenceDate: 800_000_040)
-  let minutes = (0..<20).map { index in
-    MinuteSummary(
+  // Explicit types keep this within Swift 6.1's type-checking budget.
+  let minutes: [MinuteSummary] = (0..<20).map { (index: Int) -> MinuteSummary in
+    let calm = index % 3 == 2
+    let routerP95: Double = calm ? 20 : 400
+    let internetP95: Double = calm ? 22 : 410
+    return MinuteSummary(
       start: origin.addingTimeInterval(Double(index) * 60), ssid: "Home", samples: 30,
-      accessPoint: target(3, 5, loss: 0),
-      router: target(8, index % 3 == 2 ? 20 : 400, loss: 0),
-      internet: target(10, index % 3 == 2 ? 22 : 410, loss: 0), worstHealth: "healthy")
+      accessPoint: target(3, 5, loss: 0), router: target(8, routerP95, loss: 0),
+      internet: target(10, internetP95, loss: 0), worstHealth: "healthy")
   }
   let incident = try #require(IncidentTimeline.incidents(from: minutes, profiles: []).first)
   #expect(incident.verdict == .bridgeSpikes)
