@@ -20,6 +20,8 @@ public enum HeadlessCommand: Equatable, Sendable {
   case clearHistory
   case openAtLogin(ProfileUpdate.Switch?)
   case notifications(ProfileUpdate.Switch?)
+  /// Check for a newer release now; optionally install it or change the daily check.
+  case update(install: Bool, automatic: ProfileUpdate.Switch?)
   case export(days: Int, directory: String?, redact: Bool)
   case events(hours: Int, json: Bool)
   case mark(String)
@@ -96,6 +98,11 @@ public enum HeadlessCommand: Equatable, Sendable {
                              restarts, and what to change.
       incidents [--days N]   List problems in the last N days (default 7): when, how long,
                              the most likely cause and the evidence for each link.
+      update [--install] [--auto on|off]
+                             Ask GitHub for the latest release now and say whether it is
+                             newer. --install installs it with the installer bundled in the
+                             app (copies in an Applications folder only). --auto turns the
+                             daily check on or off (default on).
       notifications [on|off] Show or change whether LinkWatch notifies you when a problem
                              lasts 3 minutes, and when it is back to normal (default off;
                              turning it on asks macOS for permission once).
@@ -155,6 +162,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     switch name {
     case "open-at-login": try openAtLogin(options)
     case "notifications": try notifications(options)
+    case "update": try update(options)
     case "export": try export(options)
     case "mark": try mark(options)
     case "test-device": try testDevice(options)

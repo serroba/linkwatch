@@ -121,6 +121,14 @@ work the same way, with ordinary wording.
 If a network's router or access point changes later, LinkWatch offers to **Update
 profile**; it never changes settings by itself.
 
+## Updates
+
+Once a day LinkWatch asks GitHub whether a newer version exists. If so, the panel shows
+**LinkWatch X is available**: click **Install update** and LinkWatch quits, installs
+the new version and reopens within a minute. **What's new** opens the release notes.
+macOS may then ask again for Location and Local Network access. Turn the daily check
+off in Settings under **Check for updates once a day**.
+
 ## After a restart
 
 LinkWatch opens at login, so it keeps watching after the Mac restarts; macOS lists it

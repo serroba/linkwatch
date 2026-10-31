@@ -23,6 +23,8 @@ extension Headless {
     case .removeProfile(let ssid): return await removeProfile(ssid)
     case .openAtLogin(let setting): return openAtLogin(setting)
     case .notifications(let setting): return await notifications(setting)
+    case .update(let install, let automatic):
+      return await update(install: install, automatic: automatic)
     case .mark(let label): return await mark(label)
     case .testDevice(let device): return await testDevice(device)
     case .restarted(let device, let wait): return await restarted(device, wait: wait)

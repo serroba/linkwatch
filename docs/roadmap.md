@@ -55,13 +55,15 @@ happened and which link failed, on the Mac where it happened.
 - **Simple panel and opt-in notifications**: only the advice with details one click
   away, and, when turned on, one notification when a problem lasts three minutes and
   another when it is back to normal.
+- **Update notice**: a daily check for a newer release and **Install update**, which
+  runs the installer bundled in the app.
 - **App icon**, drawn by `scripts/make_icon.swift` at build time, so the repository
   holds no binary artwork.
 
 ## Next
 
-1. **Easier updates.** A Homebrew tap (`brew install --cask linkwatch`) or an in-app
-   "update available" notice built on the releases.
+1. **Developer ID signing and notarisation**, so updates keep macOS permissions (see
+   Distribution below).
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.

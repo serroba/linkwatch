@@ -29,6 +29,11 @@ Wi-Fi interface:
   so macOS learns the access point's hardware address. It refuses public networks
   and subnets larger than /22.
 - **`probe`**, only when run from the command line, to the address given.
+- **One update check a day** to `api.github.com` (LinkWatch's public latest-release
+  page), over any network. GitHub sees this Mac's public IP address and a User-Agent
+  naming LinkWatch's version; no cookies or identifiers are sent. Turn it off in
+  Settings or with `update --auto off`. Updates download only when you click **Install
+  update**.
 
 In total that is about one megabyte an hour. Unapproved networks receive nothing.
 Discovering the router and access point reads information macOS already has (the

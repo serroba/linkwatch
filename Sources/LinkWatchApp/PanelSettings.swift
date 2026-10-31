@@ -11,10 +11,11 @@ private final class NotificationChoice: ObservableObject {
 /// whether to do something.
 struct PanelSettings: View {
   @AppStorage("simplePanel") private var simple = false
+  @AppStorage("checkForUpdates") private var checkForUpdates = true
   @StateObject private var choice = NotificationChoice()
 
   var body: some View {
-    Section("Panel and notifications") {
+    Section("Panel, notifications and updates") {
       Toggle("Simple panel: only the advice, with details one click away", isOn: $simple)
       Toggle("Notify me when a problem lasts 3 minutes", isOn: $choice.enabled)
         .onChange(of: choice.enabled) { _, wanted in
@@ -30,6 +31,11 @@ struct PanelSettings: View {
         }
       Text(
         "One notification says what to do once a problem has lasted three minutes, and another when it is back to normal. Lag spikes, busy downloads and a router that only ignores pings do not notify."
+      )
+      .font(.caption).foregroundStyle(.secondary)
+      Toggle("Check for updates once a day", isOn: $checkForUpdates)
+      Text(
+        "Asks GitHub for the latest LinkWatch release, which shows GitHub this Mac's IP address. Updates are only installed when you click Install update."
       )
       .font(.caption).foregroundStyle(.secondary)
       if let message = choice.message { Text(message).font(.caption).foregroundStyle(.red) }
