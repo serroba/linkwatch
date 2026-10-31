@@ -38,6 +38,7 @@ final class FakeEnvironment: NetworkEnvironment {
 
   var wifiSignal: WiFiSignal?
   func signal() -> WiFiSignal? { wifiSignal }
+  var isExpensivePath = false
 }
 
 struct StoreFailure: Error {}

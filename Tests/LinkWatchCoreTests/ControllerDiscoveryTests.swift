@@ -163,7 +163,7 @@ import Testing
     Issue.record("Expected a ready suggestion after the search")
     return
   }
-  #expect(discovery.proposedProfile != nil)
+  #expect(discovery.proposedProfile() != nil)
   #expect(harness.controller.profiles.isEmpty)
   let report = StatusReport(controller: harness.controller, now: harness.clock.now)
   #expect(report.text.contains("AP search:   Found the AP at 192.168.7.2"))

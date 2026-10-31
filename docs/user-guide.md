@@ -81,6 +81,15 @@ LinkWatch only watches networks you approve.
 4. Optionally, in Settings, name what connects the access point to the router, for
    example *"TP-Link powerline adapters"*. The advice then uses that name.
 
+**Phone hotspots.** When the Mac joins a phone's personal hotspot, the panel says
+**Phone hotspot detected** and the phone is monitored as both access point and
+router. Advice then talks about the phone, for example *"Move the phone where
+reception is better, for example near a window"* or *"Bring the Mac and the phone
+closer together"*, and the internet pings run every ten seconds to save mobile data.
+If a hotspot is not recognised, turn on **This network is a phone's personal
+hotspot** in Settings. Home routers with built-in Wi-Fi and no separate access point
+work the same way, with ordinary wording.
+
 If a network's router or access point changes later, LinkWatch offers to **Update
 profile**; it never changes settings by itself.
 

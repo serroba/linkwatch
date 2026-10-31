@@ -226,12 +226,15 @@ extension Headless {
       write("No incidents in the last \(days) day\(days == 1 ? "" : "s").\n")
       return 0
     }
-    let bridges = Dictionary(profiles.map { ($0.ssid, $0.bridgeName) }) { first, _ in first }
+    let byNetwork = Dictionary(profiles.map { ($0.ssid, $0) }) { first, _ in first }
     for incident in incidents {
-      let bridge = bridges[incident.ssid] ?? nil
+      let profile = byNetwork[incident.ssid]
+      let bridge = profile?.bridgeName
+      let hotspot = profile?.hotspot ?? false
+      let action = incident.verdict.action(bridge: bridge, hotspot: hotspot)
       write(
-        incident.summary(bridge: bridge) + "\n  " + incident.evidence + "\n  → "
-          + (incident.verdict.action(bridge: bridge) ?? "No action needed.") + "\n")
+        incident.summary(bridge: bridge, hotspot: hotspot) + "\n  " + incident.evidence
+          + "\n  → " + (action ?? "No action needed.") + "\n")
     }
     return 0
   }
@@ -245,7 +248,8 @@ extension Headless {
     if json {
       emit(encodable: diagnosis.report, compact: false)
     } else {
-      write(diagnosis.report.text(bridgeNames: diagnosis.bridgeNames))
+      write(
+        diagnosis.report.text(bridgeNames: diagnosis.bridgeNames, hotspots: diagnosis.hotspots))
     }
     return 0
   }

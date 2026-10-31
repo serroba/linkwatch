@@ -64,6 +64,7 @@ needs `--ap` and `--router`:
 | `--ap ADDRESS`, `--router ADDRESS` | Access point and router IPv4 addresses | — |
 | `--bridge NAME`, `--no-bridge` | What links the access point to the router, used in advice | none |
 | `--internet on\|off` | Also ping Cloudflare 1.1.1.1 and Google 8.8.8.8 | on |
+| `--hotspot on\|off` | The network is a phone's personal hotspot: advice names the phone, internet pings every 10 s | off, or on when detected |
 | `--difference MS`, `--recovery-difference MS` | Router-minus-AP alert and recovery thresholds | 20, 10 |
 | `--slow MS`, `--recovery-slow MS` | Both-slow alert and recovery thresholds | 30, 20 |
 | `--sustained SECONDS`, `--recovery SECONDS` | How long a change must hold before alerting or clearing | 10, 6 |

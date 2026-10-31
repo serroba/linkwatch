@@ -177,6 +177,18 @@ and by at most seven in the last byte, which is how vendors usually derive radio
 addresses. Zero or several matches leave the AP unknown; a match on the router
 means there is no separate AP. Suggestions are dismissed per discovered address set.
 
+A profile whose access point and router share an address is a single device, such as
+a phone hotspot or an all-in-one home router. It is probed once per cycle and that
+outcome is recorded for both, so the bridge verdicts never apply. When the router is
+the AP, the suggestion is ready at once. A network counts as a phone hotspot when
+macOS marks the path as expensive or the router is in the iPhone hotspot range
+172.20.10.0/28; then an unknown AP is taken to be the router, and the saved profile
+is flagged `hotspot`. Hotspot profiles, and any network on an expensive path, ping
+the internet references on every fifth cycle (10 s) instead of every cycle. Their
+advice names the phone: a poor or spiky AP link or weak signal becomes "the
+connection between the Mac and the phone", and internet trouble becomes the phone's
+mobile reception.
+
 **Find AP** is the only feature that sends traffic to discover devices. It runs only
 on request, takes the Wi-Fi interface's IPv4 address and netmask, refuses addresses
 outside 10/8, 172.16/12, 192.168/16 and 169.254/16 and subnets larger than /22, and

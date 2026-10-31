@@ -149,9 +149,10 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     return nil
   }
 
-  /// One plain sentence, naming the bridge when the profile does.
-  public func headline(bridge: String?) -> String {
-    switch self {
+  /// One plain sentence, naming the bridge when the profile does and the phone on hotspots.
+  public func headline(bridge: String?, hotspot: Bool = false) -> String {
+    if hotspot, let phone = phoneHeadline { return phone }
+    return switch self {
     case .allClear: "Everything is working normally."
     case .accessPoint: "The Wi-Fi connection to the access point is poor."
     case .bridge:
@@ -172,8 +173,9 @@ public enum Verdict: String, Codable, Equatable, Sendable {
   }
 
   /// At most one action; nil when there is nothing to do.
-  public func action(bridge: String?) -> String? {
-    switch self {
+  public func action(bridge: String?, hotspot: Bool = false) -> String? {
+    if hotspot, let phone = phoneAction { return phone }
+    return switch self {
     case .allClear: nil
     case .accessPoint:
       "Move closer to the access point. If it stays slow nearby, restart the access point."
@@ -203,4 +205,26 @@ public enum Verdict: String, Codable, Equatable, Sendable {
   }
 
   public var isProblem: Bool { self != .allClear }
+
+  /// On a phone's hotspot the access point and router are the phone itself, and the internet
+  /// is its mobile connection.
+  private var phoneHeadline: String? {
+    switch self {
+    case .accessPoint, .weakSignal: "The connection between the Mac and the phone is poor."
+    case .accessPointSpikes: "The connection between the Mac and the phone has frequent lag spikes."
+    case .internet: "The phone's mobile reception is poor."
+    case .internetSpikes: "The phone's mobile connection has frequent lag spikes."
+    default: nil
+    }
+  }
+
+  private var phoneAction: String? {
+    switch self {
+    case .accessPoint, .weakSignal, .accessPointSpikes:
+      "Bring the Mac and the phone closer together, or connect them with a cable."
+    case .internet, .internetSpikes:
+      "Move the phone where reception is better, for example near a window."
+    default: nil
+    }
+  }
 }

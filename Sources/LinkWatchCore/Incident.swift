@@ -144,8 +144,9 @@ extension Verdict: Comparable {
   }
 
   /// A short name for timelines, naming the bridge when the profile does.
-  public func label(bridge: String?) -> String {
-    switch self {
+  public func label(bridge: String?, hotspot: Bool = false) -> String {
+    if hotspot, let phone = phoneLabel { return phone }
+    return switch self {
     case .allClear: "no problem"
     case .accessPoint: "Wi-Fi or access point"
     case .bridge: bridge ?? "link between access point and router"
@@ -159,19 +160,29 @@ extension Verdict: Comparable {
     case .internetSpikes: "lag spikes on the internet"
     }
   }
+
+  private var phoneLabel: String? {
+    switch self {
+    case .accessPoint, .weakSignal: "link to the phone"
+    case .accessPointSpikes: "lag spikes on the link to the phone"
+    case .internet: "phone reception"
+    case .internetSpikes: "lag spikes on the phone's mobile connection"
+    default: nil
+    }
+  }
 }
 
 extension Incident {
   /// One readable line, for example
   /// "Sat 31 Oct 19:40–20:05 (25 min) on Home: TP-Link powerline adapters".
-  public func summary(bridge: String?) -> String {
+  public func summary(bridge: String?, hotspot: Bool = false) -> String {
     let day = DateFormatter()
     day.setLocalizedDateFormatFromTemplate("EEE d MMM HH:mm")
     let time = DateFormatter()
     time.setLocalizedDateFormatFromTemplate("HH:mm")
     let minutes = Int(duration / 60)
     return "\(day.string(from: start))–\(time.string(from: end)) (\(minutes) min) on \(ssid): "
-      + verdict.label(bridge: bridge)
+      + verdict.label(bridge: bridge, hotspot: hotspot)
   }
 
   /// The links' evidence in one line, so the cause can be checked rather than trusted.

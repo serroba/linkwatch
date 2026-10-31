@@ -15,6 +15,7 @@ enum Reports {
     let report: DiagnoseReport
     let minutes: [MinuteSummary]
     let bridgeNames: [String: String]
+    let hotspots: Set<String>
   }
 
   static func diagnosis(status: StatusReport, appRunning: Bool, hours: Int) -> Diagnosis {
@@ -33,7 +34,9 @@ enum Reports {
     let bridgeNames = Dictionary(
       profiles.compactMap { profile in profile.bridgeName.map { (profile.ssid, $0) } }
     ) { first, _ in first }
-    return Diagnosis(report: report, minutes: minutes, bridgeNames: bridgeNames)
+    return Diagnosis(
+      report: report, minutes: minutes, bridgeNames: bridgeNames,
+      hotspots: Set(profiles.filter(\.hotspot).map(\.ssid)))
   }
 
   static func export(
@@ -42,7 +45,7 @@ enum Reports {
     let diagnosis = diagnosis(status: status, appRunning: appRunning, hours: days * 24)
     return try ExportedReport(
       report: diagnosis.report, minutes: diagnosis.minutes,
-      bridgeNames: diagnosis.bridgeNames, redact: redact
+      bridgeNames: diagnosis.bridgeNames, hotspots: diagnosis.hotspots, redact: redact
     ).write(into: directory)
   }
 

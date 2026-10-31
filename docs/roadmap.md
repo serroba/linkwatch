@@ -42,6 +42,11 @@ happened and which link failed, on the Mac where it happened.
   redaction, which the diagnose skill reads directly.
 - **Survives restarts**: opens at login, and settings and the week of history are
   kept on disk; the hour chart fills in from stored minutes after a restart.
+- **Phone hotspots and single-box routers**: a network whose access point is the
+  router is monitored with one ping per cycle. A personal hotspot is recognised
+  (macOS marks the path as expensive, or the iPhone hotspot range), advice names the
+  phone ("move the phone near a window", "bring the Mac and the phone closer"), and
+  internet reference pings run every 10 seconds to save mobile data.
 
 ## Next
 
@@ -50,15 +55,11 @@ happened and which link failed, on the Mac where it happened.
 2. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes
    (asks for Notifications permission).
-3. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
-   marks the path as expensive and the first hop is also the router; the verdicts
-   switch to phone wording ("move the phone near a window", "bring the laptop
-   closer"), and internet reference pings slow down to save data.
-4. **"I restarted it."** Record a restart in the history and show its effect a few
+3. **"I restarted it."** Record a restart in the history and show its effect a few
    minutes later, for example "router latency 85 → 4 ms".
-5. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
+4. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
    latency under load, to decide whether to move or replace equipment.
-6. **App icon.**
+5. **App icon.**
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.

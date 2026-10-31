@@ -27,7 +27,11 @@ extension MonitorController {
   /// The verdict's sentence and action, named after the current profile's bridge.
   public var advice: (headline: String, action: String?) {
     let bridge = session.profile?.bridgeName
-    return (verdict.headline(bridge: bridge), verdict.action(bridge: bridge))
+    let hotspot = session.profile?.hotspot ?? false
+    return (
+      verdict.headline(bridge: bridge, hotspot: hotspot),
+      verdict.action(bridge: bridge, hotspot: hotspot)
+    )
   }
 }
 
