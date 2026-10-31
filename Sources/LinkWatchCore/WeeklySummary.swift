@@ -100,13 +100,20 @@ public struct WeeklySummary: Codable, Equatable, Sendable {
     monitoredMinutes = window.count
     let incidents = IncidentTimeline.incidents(from: window, profiles: profiles)
     areas = Self.areas(incidents)
-    busiestHours = Self.hours(incidents, calendar: calendar)
+    // A router ignoring pings is not a connection problem (often a missing Local Network
+    // permission), so it neither sets the busiest hours nor outweighs real causes.
+    busiestHours = Self.hours(
+      incidents.filter { ProblemArea($0.verdict) != .routerQuiet }, calendar: calendar)
     load = LoadEffect(window)
     restarts = RestartEffect.effects(
       events: events.filter { $0.time >= since && $0.time <= now }, minutes: window)
   }
 
   public var problemMinutes: Int { areas.map(\.problemMinutes).reduce(0, +) }
+
+  /// Areas that affect the connection, most problem minutes first.
+  var connectionAreas: [AreaSummary] { areas.filter { $0.area != .routerQuiet } }
+  var connectionMinutes: Int { connectionAreas.map(\.problemMinutes).reduce(0, +) }
 
   private static func areas(_ incidents: [Incident]) -> [AreaSummary] {
     let grouped = Dictionary(grouping: incidents) { ProblemArea($0.verdict) }

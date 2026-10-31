@@ -113,3 +113,22 @@ private func restarts() -> [AppEvent] {
     try HeadlessCommand.parse(["summary", "--days", "9"])
   }
 }
+
+@Test func aQuietRouterNeitherOutweighsRealCausesNorSetsTheHours() throws {
+  var minutes = week()
+  // Day five, 14:00–14:39: the router ignores pings while the internet works.
+  let afternoon = firstDay.addingTimeInterval(5 * 86_400 + 14 * 3600)
+  for offset in 0..<40 {
+    var silent = minute(afternoon.addingTimeInterval(Double(offset) * 60))
+    silent.router = target(nil, nil, loss: 1)
+    minutes.append(silent)
+  }
+  let summary = WeeklySummary(
+    minutes: minutes, profiles: [homeProfile], events: [], days: 7, now: now, calendar: utc)
+  #expect(summary.areas.first?.area == .routerQuiet)
+  #expect(summary.busiestHours.first?.hour == 19)
+  let advice = summary.advice(bridgeNames: [:])
+  #expect(advice[0].hasPrefix("Most problems were on the link between the access point"))
+  #expect(
+    summary.text(bridgeNames: [:]).contains("the router not answering LinkWatch: 1 incident,"))
+}

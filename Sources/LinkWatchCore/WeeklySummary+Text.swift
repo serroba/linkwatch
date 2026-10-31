@@ -5,7 +5,9 @@ extension WeeklySummary {
   public func advice(bridgeNames: [String: String], hotspots: Set<String> = []) -> [String] {
     guard monitoredMinutes > 0 else { return ["Nothing was recorded in this period."] }
     var advice: [String] = []
-    if let dominant = areas.first, dominant.problemMinutes * 2 >= problemMinutes,
+    let candidates = connectionAreas.isEmpty ? areas : connectionAreas
+    let total = candidates.map(\.problemMinutes).reduce(0, +)
+    if let dominant = candidates.first, dominant.problemMinutes * 2 >= total,
       dominant.incidents >= 3
     {
       let hotspot = hotspots.contains(dominant.ssid)
@@ -21,8 +23,8 @@ extension WeeklySummary {
             "Heavy downloads and uploads add about %.0f ms for everything else. If the router offers SQM or Smart Queue QoS, turning it on usually fixes this.",
           added))
     }
-    if problemMinutes >= 20, let peak = busiestHours.first,
-      peak.problemMinutes * 10 >= problemMinutes * 3
+    if connectionMinutes >= 20, let peak = busiestHours.first,
+      peak.problemMinutes * 10 >= connectionMinutes * 3
     {
       advice.append(
         String(
@@ -57,6 +59,10 @@ extension WeeklySummary {
     }
   }
 
+  private static func count(_ value: Int, _ noun: String) -> String {
+    "\(value) \(noun)\(value == 1 ? "" : "s")"
+  }
+
   /// A readable summary for terminals and exported reports.
   public func text(bridgeNames: [String: String], hotspots: Set<String> = []) -> String {
     var lines = ["Summary of the last \(days) day\(days == 1 ? "" : "s")"]
@@ -65,12 +71,12 @@ extension WeeklySummary {
       String(
         format: "  Monitored: %.0f h (%.0f%% of the period)", Double(monitoredMinutes) / 60, share))
     let incidents = areas.map(\.incidents).reduce(0, +)
-    lines.append("  Problems: \(incidents) incidents, \(problemMinutes) min")
+    lines.append("  Problems: \(Self.count(incidents, "incident")), \(problemMinutes) min")
     for area in areas {
       let name = area.area.name(
         bridge: bridgeNames[area.ssid], hotspot: hotspots.contains(area.ssid))
       lines.append(
-        "    \(name): \(area.incidents) incidents, \(area.problemMinutes) min"
+        "    \(name): \(Self.count(area.incidents, "incident")), \(area.problemMinutes) min"
           + " (longest \(area.longestMinutes) min)")
     }
     if !busiestHours.isEmpty {

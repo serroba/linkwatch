@@ -131,8 +131,11 @@ answering. Each area lists incidents, problem minutes and the longest incident. 
 busiest hours are the three hours of the day with the most incident minutes across
 all days. Latency under load compares the median of minute medians (internet when
 probed, otherwise the router) in minutes moving at least 30 MB, about 4 Mbit/s, with
-all other minutes. Advice names an area when it holds at least half the problem
-minutes over three or more incidents; reports bufferbloat when at least ten heavy
+all other minutes. A router that ignores pings while the internet works is listed but
+does not count towards the busiest hours or the main cause, since it is usually a
+missing Local Network permission rather than a connection problem. Advice names an
+area when it holds at least half of the remaining problem minutes over three or more
+incidents; reports bufferbloat when at least ten heavy
 minutes add 50 ms or more; reports a time-of-day cluster when one hour holds at least
 30% of 20 or more problem minutes; and counts how often judged restarts helped.
 
