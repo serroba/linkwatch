@@ -78,6 +78,12 @@ not yet signed by Apple, so macOS may ask again.
   above); you do not need to open anything.
 - **Open the panel** for the advice, latency per link, download and upload, the
   chart for the last hour, day or week, and the problems of the last 24 hours.
+- **Say you restarted something**: after restarting the powerline adapters, router
+  or phone, click **I restarted…**. A few minutes later the panel says whether it
+  helped, for example *"router 85 → 4 ms"*.
+- **On a phone hotspot**, LinkWatch recognises it, talks about the phone (move it
+  near a window, or bring the Mac closer) and pings the internet less often to save
+  mobile data.
 - **Mark what you are doing** when you suspect something at home affects the
   connection: type it into **What just happened?** (for example *desk moved*) and
   click **Mark**. After three or more marks, the diagnosis says whether the
@@ -104,6 +110,7 @@ From a clone of this repository (or with the app installed in `/Applications`):
 scripts/linkwatch diagnose --hours 24   # the answer first, then the evidence
 scripts/linkwatch incidents --days 7    # when it broke, for how long, the likely cause
 scripts/linkwatch mark desk moved       # note what you are doing now
+scripts/linkwatch restarted --wait      # note a restart, then say whether it helped
 scripts/linkwatch test-device desk      # guided 90-second test with prompts
 scripts/linkwatch export --redact       # a shareable report without names or addresses
 ```

@@ -142,6 +142,7 @@ private struct DetailView: View {
         Text(message).font(.caption2).foregroundStyle(.secondary)
       }
       DeviceTestView(monitor: monitor, device: $options.testDevice)
+      RestartView(monitor: monitor)
       Divider()
       Toggle("Pause monitoring", isOn: $monitor.paused)
       HStack {

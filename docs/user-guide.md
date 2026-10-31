@@ -56,6 +56,15 @@ the desk turns out to disturb them, plug the adapters straight into a wall socke
 plug the desk into another circuit or into an adapter's filtered socket, or replace
 the powerline link with a cable.
 
+## Saying you restarted something
+
+After restarting the powerline adapters, the router or the phone, click **I
+restarted…** in the panel and pick the device. LinkWatch notes the time, skips the
+two minutes the device needs to start, and after a few more minutes says whether it
+helped, for example *"Restarting the TP-Link powerline adapters helped: router 85 → 4
+ms."* If it made no difference, the problem is most likely somewhere else. Restarts
+also appear in the diagnosis, so the history shows what was tried and what worked.
+
 ## Testing a device
 
 For a quick answer, type the device's name (for example *desk*) next to **Test** in
@@ -109,7 +118,8 @@ seconds.
 
 **It says to restart the powerline adapters.** Unplug both adapters (or the ones
 between your access point and router), wait ten seconds and plug them back in. The
-icon should turn green a minute or two after they reconnect.
+icon should turn green a minute or two after they reconnect. Click **I restarted…**
+afterwards so LinkWatch can confirm whether it helped.
 
 **Should I restart the router?** Only if the advice says the internet is down *and*
 the problem is at home. If the icon is orange, the provider is having trouble and

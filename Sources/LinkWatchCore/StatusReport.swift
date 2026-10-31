@@ -72,6 +72,8 @@ public struct StatusReport: Codable, Equatable, Sendable {
   public var usageTotals: UsageTotals
   /// The guided device test, when one is running or has a result.
   public var deviceTest: DeviceTestReport?
+  /// The latest restart and its effect, for an hour after it.
+  public var restart: RestartEffect?
   public var weekMinutes: Int
   /// ISO 8601 start of the oldest stored minute.
   public var weekStart: String?
@@ -118,6 +120,7 @@ public struct StatusReport: Codable, Equatable, Sendable {
     uploadBitsPerSecond = controller.usage?.uploadBitsPerSecond
     usageTotals = controller.usageTotals
     deviceTest = DeviceTestReport(controller: controller, now: now)
+    restart = controller.restartEffect
     weekMinutes = controller.week.minutes.count
     weekStart = controller.week.minutes.first.map { ISO8601DateFormatter().string(from: $0.start) }
     historyError = controller.historyError
@@ -214,6 +217,7 @@ extension StatusReport {
         + " · 7 days \(usageTotals.week.summary)")
     lines.append("Signal:      " + (signal?.summary ?? "not measured"))
     if let deviceTest { lines.append("Device test: \(deviceTest.summary)") }
+    if let restart { lines.append("Restart:     \(restart.sentence)") }
     lines.append(
       String(
         format: "Loss:        AP %.0f%% · Router %.0f%% over %d samples",
@@ -320,6 +324,7 @@ extension StatusReport {
     try container.encode(uploadBitsPerSecond, forKey: .uploadBitsPerSecond)
     try container.encode(usageTotals, forKey: .usageTotals)
     try container.encode(deviceTest, forKey: .deviceTest)
+    try container.encode(restart, forKey: .restart)
     try container.encode(weekMinutes, forKey: .weekMinutes)
     try container.encode(weekStart, forKey: .weekStart)
     try container.encode(historyError, forKey: .historyError)

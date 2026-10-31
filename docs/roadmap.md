@@ -47,6 +47,8 @@ happened and which link failed, on the Mac where it happened.
   (macOS marks the path as expensive, or the iPhone hotspot range), advice names the
   phone ("move the phone near a window", "bring the Mac and the phone closer"), and
   internet reference pings run every 10 seconds to save mobile data.
+- **"I restarted…"**: records a restart and, a few minutes later, says whether it
+  helped, for example "router 85 → 4 ms", in the panel, `status` and `diagnose`.
 
 ## Next
 
@@ -55,11 +57,9 @@ happened and which link failed, on the Mac where it happened.
 2. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes
    (asks for Notifications permission).
-3. **"I restarted it."** Record a restart in the history and show its effect a few
-   minutes later, for example "router latency 85 → 4 ms".
-4. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
+3. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
    latency under load, to decide whether to move or replace equipment.
-5. **App icon.**
+4. **App icon.**
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.

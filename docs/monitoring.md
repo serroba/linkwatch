@@ -108,6 +108,19 @@ router, whose loss grows by ten points) is named as most likely affected; otherw
 it says there is no clear effect. Correlation is evidence, not proof: repeat the
 activity at different times to rule out coincidence.
 
+## Restarts
+
+**I restarted…** (or `restarted [DEVICE]`) records a `restarted` event naming the
+device. Its effect compares the stored minutes wholly within the ten minutes before
+the restart with the ten minutes starting two minutes after it, skipping the time
+the device needs to boot. Each side reports the median of the minutes' medians per
+link and the mean router and internet loss. Until three minutes have followed, the
+effect is *measuring*. A link improves when its typical latency drops by at least
+10 ms and at least halves, or its loss drops by ten points; it worsens in the
+opposite case. Any improvement with nothing worse reads as *helped*, anything worse
+as *worse*, and otherwise *no clear difference*. The panel and `status` show the
+latest restart for an hour; `diagnose` lists every restart in the period.
+
 ## Device tests
 
 A guided test has three 30-second phases: as usual, device on, device off. Each
