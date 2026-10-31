@@ -134,7 +134,7 @@ extension Headless {
       for profile in profiles {
         let thresholds = profile.thresholds
         write(
-          "\(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router) · alert above "
+          "\(profile.ssid): AP \(profile.accessPointText) · Router \(profile.router) · alert above "
             + "\(thresholds.difference) ms difference or \(thresholds.slow) ms both, after "
             + "\(thresholds.sustainedSeconds) s; recover below \(thresholds.recoveryDifference) ms"
             + " / \(thresholds.recoverySlow) ms for \(thresholds.recoverySeconds) s; internet "
@@ -159,7 +159,7 @@ extension Headless {
       return fail(controller.storageError ?? "The profile could not be saved.", code: 1)
     }
     AppControl.post(.reloadProfiles)
-    write("Saved \(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router).\n")
+    write("Saved \(profile.ssid): AP \(profile.accessPointText) · Router \(profile.router).\n")
     return 0
   }
 

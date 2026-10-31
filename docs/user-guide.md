@@ -84,9 +84,19 @@ LinkWatch only watches networks you approve.
    name; LinkWatch never reads where you are.
 2. When you join a new Wi-Fi network, the panel shows **New Wi-Fi network** with the
    router and, if found, the access point. Click **Monitor this network**.
-3. If the access point is not found, click **Find AP**. It asks each address on your
-   home network once, so the Mac learns which one is the access point; it only runs
-   when you click it. Or enter the access point's address in Settings.
+3. The access point is optional. If the Mac is connected straight to the router's
+   Wi-Fi, LinkWatch monitors the router alone. If there is a separate access point
+   that was not found, click **Find AP**. It asks each address on your home network
+   once, so the Mac learns which one is the access point, and only runs when you
+   click it. Or enter the access point's address in Settings.
+
+   **Moving around the house.** Many homes have the router's own Wi-Fi in one room and
+   an access point (for example behind powerline adapters) in another, with the same
+   network name. LinkWatch follows whichever one the Mac is connected to: on the
+   router's Wi-Fi it pings only the router, and behind the access point it pings both,
+   so advice about the powerline adapters appears only when they are in the path. If
+   you first set up the network on the router's Wi-Fi, LinkWatch offers to add the
+   access point the first time you join it.
 4. Optionally, in Settings, name what connects the access point to the router, for
    example *"TP-Link powerline adapters"*. The advice then uses that name.
 

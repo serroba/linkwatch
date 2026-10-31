@@ -208,10 +208,17 @@ and by at most seven in the last byte, which is how vendors usually derive radio
 addresses. Zero or several matches leave the AP unknown; a match on the router
 means there is no separate AP. Suggestions are dismissed per discovered address set.
 
-A profile whose access point and router share an address is a single device, such as
-a phone hotspot or an all-in-one home router. It is probed once per cycle and that
-outcome is recorded for both, so the bridge verdicts never apply. When the router is
-the AP, the suggestion is ready at once. A network counts as a phone hotspot when
+The access point is optional. Each probe cycle follows the radio the Mac is associated
+with: when discovery matches the BSSID to the router, only the router is probed (the
+Mac is on the router's own Wi-Fi, for example in a room the AP does not reach); when it
+matches a separate device, that device is probed as the AP; otherwise the profile's AP
+is used, or the router alone when the profile has none. A roam changes the network
+identity, so the monitoring window restarts and the two paths are never mixed. With
+only the router probed, its outcome is recorded for both targets, so the bridge
+verdicts never apply. A network first joined on the router's radio is saved without
+an AP; joining its AP later offers to add it, and returning to the router's radio
+keeps it without suggesting anything. A profile whose AP is empty or equals the router
+is a single device, such as a phone hotspot or an all-in-one router. A network counts as a phone hotspot when
 macOS marks the path as expensive or the router is in the iPhone hotspot range
 172.20.10.0/28; then an unknown AP is taken to be the router, and the saved profile
 is flagged `hotspot`. Hotspot profiles, and any network on an expensive path, ping

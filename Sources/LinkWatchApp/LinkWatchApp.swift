@@ -16,7 +16,8 @@ struct LinkWatchApp: App {
       // A menu bar label renders only one image and one text, so the values share a Text.
       Label {
         Text(
-          "AP \(latencyText(controller.accessPointLatency)) · R \(latencyText(controller.routerLatency)) ms"
+          (controller.onRouterRadio ? "" : "AP \(latencyText(controller.accessPointLatency)) · ")
+            + "R \(latencyText(controller.routerLatency)) ms"
         )
         .monospacedDigit()
       } icon: {
@@ -66,15 +67,19 @@ private struct DetailView: View {
         }
       }
       HStack {
-        metric("Configured AP", value: monitor.accessPointLatency)
-        Spacer()
-        metric("Router", value: monitor.routerLatency)
+        if !monitor.onRouterRadio {
+          metric("Access point", value: monitor.accessPointLatency)
+          Spacer()
+        }
+        metric(monitor.onRouterRadio ? "Router Wi-Fi" : "Router", value: monitor.routerLatency)
         if monitor.session.profile?.internetReferences == true {
           Spacer()
           metric("Internet", value: monitor.session.window.internetMedian)
         }
       }
-      if let accessPoint = monitor.accessPointLatency, let router = monitor.routerLatency {
+      if !monitor.onRouterRadio, let accessPoint = monitor.accessPointLatency,
+        let router = monitor.routerLatency
+      {
         Text(String(format: "Router − AP: %+.1f ms", router - accessPoint)).monospacedDigit()
       }
       if let signal = monitor.signal {
@@ -94,10 +99,14 @@ private struct DetailView: View {
       }
       if let profile = monitor.session.profile {
         Text(profile.ssid).font(.headline)
-        Text("AP \(profile.accessPoint) · Router \(profile.router)").font(.caption)
+        Text("AP \(profile.accessPointText) · Router \(profile.router)").font(.caption)
         Text("Associated BSSID: \(monitor.network?.bssid ?? "Unavailable")").font(.caption)
-        Text("The configured AP may differ from the currently associated device.")
-          .font(.caption).foregroundStyle(.secondary)
+        Text(
+          monitor.onRouterRadio
+            ? "Connected to the router's own Wi-Fi here, so the access point is not in the path."
+            : "Connected through the access point \(monitor.servingAccessPoint(for: profile) ?? "")."
+        )
+        .font(.caption).foregroundStyle(.secondary)
         Text(
           String(
             format: "Packet loss, last 2 min — AP %.0f%% · Router %.0f%%",
@@ -232,10 +241,10 @@ private struct ProfileSettings: View {
           }
         }
         .disabled(monitor.network == nil)
-        TextField("Configured AP IPv4 address", text: $editor.draft.accessPoint)
+        TextField("Access point IPv4 address (optional)", text: $editor.draft.accessPoint)
         TextField("Router IPv4 address", text: $editor.draft.router)
         Text(
-          "Use current Wi-Fi fills the router assigned to the Wi-Fi service, and the AP when the Mac's existing ARP cache identifies it. Find AP in the menu bar panel can search the subnet once on request."
+          "Leave the access point empty if there is none, or if the Mac is on the router's own Wi-Fi. LinkWatch follows the Wi-Fi radio the Mac is connected to, so a network can use the router's Wi-Fi in one room and an access point in another. Use current Wi-Fi fills the router and, when the Mac's ARP cache identifies it, the AP."
         )
         .font(.caption)
       }
@@ -287,7 +296,7 @@ private struct ProfileSettings: View {
         editor.message =
           monitor.save(editor.draft)
           ? "Profile saved locally."
-          : "Check the Wi-Fi name, distinct IPv4 addresses and thresholds."
+          : "Check the Wi-Fi name, the IPv4 addresses and the thresholds."
       }
       .disabled(!editor.draft.isValid)
       if !editor.message.isEmpty { Text(editor.message) }

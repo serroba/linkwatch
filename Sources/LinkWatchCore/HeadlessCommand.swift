@@ -76,7 +76,8 @@ public enum HeadlessCommand: Equatable, Sendable {
                   [--recovery-slow MS] [--sustained SECONDS] [--recovery SECONDS]
                   [--internet on|off] [--bridge NAME | --no-bridge] [--hotspot on|off]
                              Create or change a profile; omitted values keep their current
-                             setting. A new profile needs --ap and --router. --internet
+                             setting. A new profile needs --router; --ap is optional, and
+                             --ap none removes it (no separate access point). --internet
                              also pings Cloudflare 1.1.1.1 and Google 8.8.8.8 (default on).
                              --bridge names the device between the AP and the router, used
                              in advice such as "Restart the TP-Link powerline adapters".
@@ -236,7 +237,9 @@ public struct ProfileUpdate: Equatable, Sendable {
       throw .init(description: "profile set needs --ssid NAME")
     }
     self.ssid = ssid
-    accessPoint = try HeadlessCommand.take(value: "--ap", from: &options)
+    accessPoint = try HeadlessCommand.take(value: "--ap", from: &options).map {
+      $0 == "none" ? "" : $0
+    }
     router = try HeadlessCommand.take(value: "--router", from: &options)
     difference = try Self.number("--difference", from: &options)
     recoveryDifference = try Self.number("--recovery-difference", from: &options)
@@ -265,13 +268,11 @@ public struct ProfileUpdate: Equatable, Sendable {
     }
   }
 
-  /// Merges the update into an existing profile, or creates one when both addresses are given.
+  /// Merges the update into an existing profile, or creates one when the router is given.
   public func applied(to existing: NetworkProfile?) -> NetworkProfile? {
     var profile =
       existing
-      ?? accessPoint.flatMap { accessPoint in
-        router.map { NetworkProfile(ssid: ssid, accessPoint: accessPoint, router: $0) }
-      }
+      ?? router.map { NetworkProfile(ssid: ssid, accessPoint: accessPoint ?? "", router: $0) }
     guard profile != nil else { return nil }
     if let accessPoint { profile?.accessPoint = accessPoint }
     if let router { profile?.router = router }

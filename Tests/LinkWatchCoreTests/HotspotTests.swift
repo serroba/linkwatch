@@ -50,7 +50,7 @@ private let phoneRouter = "172.20.10.1"
   #expect(harness.controller.acceptSuggestion())
   let saved = harness.controller.profiles.first
   #expect(saved?.hotspot == true)
-  #expect(saved?.accessPoint == phoneRouter)
+  #expect(saved?.isSingleDevice == true)
 }
 
 @MainActor

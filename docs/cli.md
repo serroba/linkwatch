@@ -59,11 +59,12 @@ running app immediately.
 | `open-at-login [on\|off]` | Settings › **Open LinkWatch at login**; without an argument, shows the current state |
 
 `profile set` options; omitted values keep their current setting, and a new profile
-needs `--ap` and `--router`:
+needs `--router` (the access point is optional):
 
 | Option | Meaning | Default |
 |---|---|---|
-| `--ap ADDRESS`, `--router ADDRESS` | Access point and router IPv4 addresses | — |
+| `--router ADDRESS` | Router IPv4 address | — |
+| `--ap ADDRESS`, `--ap none` | Access point IPv4 address, or none when there is no separate AP | none |
 | `--bridge NAME`, `--no-bridge` | What links the access point to the router, used in advice | none |
 | `--internet on\|off` | Also ping Cloudflare 1.1.1.1 and Google 8.8.8.8 | on |
 | `--hotspot on\|off` | The network is a phone's personal hotspot: advice names the phone, internet pings every 10 s | off, or on when detected |
