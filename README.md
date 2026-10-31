@@ -59,13 +59,38 @@ must make that distinction visible.
 The monitoring core, network-profile validation, stale-result protection and
 native interface-bound IPv4 ICMP adapter are implemented and tested. Repository
 checks, Swift formatting, macOS builds, deterministic tests and a loopback probe
-run in CI. The menu bar app, settings and app packaging are in development.
+run in CI. A native menu bar app, local profile settings and an ad-hoc-signed
+app bundle are available as a development prototype.
 
 The first usable milestone is a locally runnable macOS app with paired live
 measurements, explicit profile selection, safe pause and lifecycle handling, and
 configurable sustained alerts. Real-network and UI verification are still needed.
 Developer ID signing, notarisation and release packaging remain separate work;
 this is not yet a public distribution release.
+
+## Build and run locally
+
+Requires macOS 14 or later and a Swift 6.1-compatible Apple toolchain. CI uses
+macOS 15 and Xcode 16.4.
+
+```sh
+bash scripts/build_app.sh
+open dist/LinkWatch.app
+```
+
+Open **Settings** from the menu bar panel, allow Wi-Fi identification, and select
+**Use current Wi-Fi** or enter the exact network name. Enter distinct AP and router
+IPv4 addresses, adjust thresholds if needed, and explicitly save the profile to
+allow monitoring. A router address is suggested only when Wi-Fi owns the default
+route. No profile or network addresses are preconfigured.
+
+macOS may also request Local Network access when the first probe is sent. If
+access is denied, measurements fail visibly; review Location and Local Network
+permissions in System Settings. The app never requests location coordinates.
+Rebuilding the ad-hoc-signed prototype may affect remembered permissions.
+
+The bundle is for local development, not notarised public distribution. See the
+[verification checklist](docs/verification.md) for remaining manual checks.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build checks and the required PR workflow.
 LinkWatch is open source under the [MIT licence](LICENSE).

@@ -58,6 +58,8 @@ jobs:
         env:
           LINKWATCH_TEST_LOOPBACK: '1'
         run: swift test --parallel -Xswiftc -warnings-as-errors
+      - name: Package and verify local app
+        run: bash scripts/build_app.sh
 
   required:
     name: CI required
