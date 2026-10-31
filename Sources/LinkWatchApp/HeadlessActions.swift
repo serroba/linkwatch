@@ -240,7 +240,8 @@ extension Headless {
     let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
     let report = DiagnoseReport(
       status: status, appRunning: live != nil, minutes: minutes, profiles: profiles,
-      hours: hours, now: now, primaryInterface: SystemEnvironment().primaryInterface)
+      hours: hours, now: now, primaryInterface: SystemEnvironment().primaryInterface,
+      appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
     if json {
       emit(encodable: report, compact: false)
     } else {

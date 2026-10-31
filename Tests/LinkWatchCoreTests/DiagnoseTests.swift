@@ -81,7 +81,8 @@ private func stored(_ minute: Int, router: Double? = 6, received: UInt64? = 1_00
   let minutes = (0..<60).map { stored($0, router: (10..<15).contains($0) ? 90 : 6) }
   let report = DiagnoseReport(
     status: status, appRunning: true, minutes: minutes, profiles: [named], hours: 1, now: now,
-    primaryInterface: "utun2")
+    primaryInterface: "utun2", appVersion: "0.2.0")
+  #expect(report.text(bridgeNames: [:]).hasPrefix("LinkWatch 0.2.0 diagnosis for the last 1 h"))
   #expect(report.coverage == 1)
   #expect(report.gaps.isEmpty)
   #expect(report.incidents.count == 1)
