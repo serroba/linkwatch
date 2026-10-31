@@ -52,16 +52,20 @@ public enum Health: Equatable, Sendable {
 
 public struct MonitoringWindow: Sendable {
   public private(set) var samples: [ProbePair] = []
+  public private(set) var history: [ProbePair] = []
   public private(set) var health: Health = .healthy
   public private(set) var pendingSince: TimeInterval?
   private var pending: Health?
   private var assessed: Health = .healthy
   public let thresholds: Thresholds
   public let capacity: Int
+  public let historyCapacity: Int
 
-  public init(thresholds: Thresholds = Thresholds(), capacity: Int = 60) {
+  public init(thresholds: Thresholds = Thresholds(), capacity: Int = 60, historyCapacity: Int = 450)
+  {
     self.thresholds = thresholds.isValid ? thresholds : Thresholds()
     self.capacity = max(5, capacity)
+    self.historyCapacity = max(self.capacity, historyCapacity)
   }
 
   public var accessPointMedian: Double? { median(samples.suffix(5).map(\.accessPoint)) }
@@ -81,6 +85,8 @@ public struct MonitoringWindow: Sendable {
     }
     samples.append(pair)
     if samples.count > capacity { samples.removeFirst(samples.count - capacity) }
+    history.append(pair)
+    if history.count > historyCapacity { history.removeFirst(history.count - historyCapacity) }
     guard pair.accessPoint.latency != nil, pair.router.latency != nil else {
       health = .unreachable(
         accessPoint: pair.accessPoint.latency == nil, router: pair.router.latency == nil)

@@ -11,15 +11,15 @@ and provides enough recent history to investigate intermittent problems.
 ## Intended experience
 
 The menu bar shows a health indicator and live numbers, for example
-`● AP 1 · R 62 ms`. Clicking it opens latency, packet loss, recent history, the
+`● AP 1 · R 62 ms`. Clicking it opens latency, packet loss, about 15 minutes of history, the
 router-minus-AP difference, the active network and the duration of an alert.
 Pause controls and local network-profile settings make monitoring explicit.
 
-- **Green:** no sustained degradation detected.
-- **Red:** the router is persistently slower than the configured AP.
-- **Amber:** both targets are slow; local Wi-Fi or laptop delay may be involved.
-- **Error:** a target is unreachable, identified by name and shown as `—`, never zero.
-- **Grey:** monitoring is paused, the network is unselected, or Wi-Fi identity is unavailable.
+- **Green check:** no sustained degradation detected.
+- **Red warning:** the router is persistently slower than the configured AP.
+- **Amber warning:** both targets are slow; local Wi-Fi or laptop delay may be involved.
+- **Purple stop:** a target is unreachable, identified by name and shown as `—`, never zero.
+- **Grey pause:** monitoring is paused, the network is unselected, or Wi-Fi identity is unavailable.
 
 Numbers and explanatory text accompany colour so the state remains understandable
 without relying on colour alone. Desktop notifications are off by default.

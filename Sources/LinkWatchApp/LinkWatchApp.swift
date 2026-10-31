@@ -11,7 +11,7 @@ struct LinkWatchApp: App {
       DetailView(monitor: monitor)
     } label: {
       HStack(spacing: 4) {
-        Image(systemName: "circle.fill").foregroundStyle(monitor.color)
+        Image(systemName: monitor.symbol).foregroundStyle(monitor.color)
         Text("AP \(monitor.latencyText(monitor.accessPointLatency))")
           .monospacedDigit().frame(width: 52, alignment: .trailing)
         Text("·")
@@ -35,7 +35,7 @@ private struct DetailView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Image(systemName: "circle.fill").foregroundStyle(monitor.color)
+        Image(systemName: monitor.symbol).foregroundStyle(monitor.color)
         Text("LinkWatch").font(.headline)
         Spacer()
         Text("Every 2 seconds").font(.caption).foregroundStyle(.secondary)
@@ -57,24 +57,10 @@ private struct DetailView: View {
           .font(.caption).foregroundStyle(.secondary)
         Text(
           String(
-            format: "Packet loss — AP %.0f%% · Router %.0f%%",
+            format: "Packet loss, last 2 min — AP %.0f%% · Router %.0f%%",
             monitor.session.window.accessPointLoss * 100,
             monitor.session.window.routerLoss * 100))
-        Chart {
-          ForEach(Array(monitor.session.window.samples.enumerated()), id: \.offset) { _, pair in
-            if let latency = pair.accessPoint.latency {
-              LineMark(x: .value("Time", pair.elapsed), y: .value("ms", latency))
-                .foregroundStyle(by: .value("Target", "AP"))
-            }
-            if let latency = pair.router.latency {
-              LineMark(x: .value("Time", pair.elapsed), y: .value("ms", latency))
-                .foregroundStyle(by: .value("Target", "Router"))
-            }
-          }
-        }
-        .chartXAxis(.hidden)
-        .frame(height: 100)
-        .accessibilityLabel("Recent latency history in milliseconds")
+        HistoryChart(history: monitor.session.window.history)
         if monitor.session.window.health != .healthy {
           Text(
             "Current alert for \(Int(ProcessInfo.processInfo.systemUptime - monitor.healthSince)) seconds"
@@ -104,6 +90,49 @@ private struct DetailView: View {
     VStack(alignment: .leading) {
       Text(title).font(.caption).foregroundStyle(.secondary)
       Text("\(monitor.latencyText(value)) ms").font(.title2).monospacedDigit()
+    }
+  }
+}
+
+private struct HistoryChart: View {
+  let history: [ProbePair]
+
+  var body: some View {
+    let latest = history.last?.elapsed ?? 0
+    let failures = history.filter { $0.accessPoint.latency == nil || $0.router.latency == nil }
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Last \(max(1, Int(((history.first.map { latest - $0.elapsed }) ?? 0) / 60))) min")
+        .font(.caption).foregroundStyle(.secondary)
+      Chart {
+        ForEach(Array(history.enumerated()), id: \.offset) { _, pair in
+          let minutesAgo = (pair.elapsed - latest) / 60
+          if let latency = pair.accessPoint.latency {
+            LineMark(x: .value("Minutes", minutesAgo), y: .value("ms", latency))
+              .foregroundStyle(by: .value("Target", "AP"))
+          }
+          if let latency = pair.router.latency {
+            LineMark(x: .value("Minutes", minutesAgo), y: .value("ms", latency))
+              .foregroundStyle(by: .value("Target", "Router"))
+          }
+        }
+        ForEach(Array(failures.enumerated()), id: \.offset) { _, pair in
+          RuleMark(x: .value("Minutes", (pair.elapsed - latest) / 60))
+            .foregroundStyle(.purple.opacity(0.4))
+        }
+      }
+      .chartXAxis {
+        AxisMarks { value in
+          AxisGridLine()
+          AxisValueLabel {
+            if let minutes = value.as(Double.self) { Text("\(Int(minutes.rounded())) min") }
+          }
+        }
+      }
+      .chartYAxisLabel("ms")
+      .frame(height: 120)
+      .accessibilityLabel(
+        "Latency history for the last \(history.count) measurements in milliseconds, with \(failures.count) failed measurements marked"
+      )
     }
   }
 }
