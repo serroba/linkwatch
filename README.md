@@ -106,28 +106,38 @@ code-signing identity when one exists; see [CONTRIBUTING.md](CONTRIBUTING.md).
 The bundle is for local development, not notarised public distribution. See the
 [verification checklist](docs/verification.md) for remaining manual checks.
 
-## Headless diagnosis
+## Headless diagnosis and control
 
-The app executable also runs as a command-line tool, so everything the menu bar
-shows is available as text or JSON for scripts and coding agents:
+The app executable also runs as a command-line tool. Everything the menu bar panel
+shows, and every action it offers, is available as text or JSON for scripts and
+coding agents (`scripts/linkwatch help` lists all options):
 
 ```sh
-scripts/linkwatch status            # state, latency, loss, alert, discovery, profiles
-scripts/linkwatch status --json     # the same as JSON; absent values are null
-scripts/linkwatch watch --cycles 5  # monitor headlessly, one report per 2 s cycle
-scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
+scripts/linkwatch status [--json]   # live state of the running app: latency, loss, alert,
+                                    # Wi-Fi facts, discovery, suggestion, profiles
+scripts/linkwatch watch --cycles 5  # follow the running app every 2 s (JSON Lines with --json)
+scripts/linkwatch accept            # "Monitor this network" / "Update profile"
+scripts/linkwatch dismiss           # "Not now"
 scripts/linkwatch find-ap           # opt-in one-time subnet ping to locate the AP
+scripts/linkwatch pause | resume    # the panel's pause toggle
+scripts/linkwatch profile list | set --ssid NAME [--ap A] [--router R] [--difference MS ...]
+scripts/linkwatch profile remove NAME
+scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
 scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test
-scripts/linkwatch authorize         # request Location permission from the terminal
+scripts/linkwatch authorize         # ask the running app to request Location permission
 ```
+
+`status` and `watch` read the running app's live state; with `--local`, or when the
+app is not running, they build a fresh view and `watch` monitors headlessly. Profile
+changes made from the command line take effect in the running app immediately.
 
 Commands launch the app bundle through LaunchServices, so macOS treats LinkWatch,
 not the terminal, as responsible for Location access and reveals the Wi-Fi name;
-output streams back and the exit code is preserved. Run directly from a shell, the
-executable sees the SSID and BSSID redacted. Grant Location from the app's Settings
-window; macOS does not prompt from the command line. `status`, `neighbors` and `authorize` send no traffic, and `watch`
-probes only networks with a saved profile, like the app. Output contains local
-network addresses; review it before sharing.
+output streams back and the exit code is preserved. The command line reaches the
+running app through local distributed notifications that carry no settings: they
+can pause, resume, dismiss a suggestion, reload profiles from the user's defaults
+or request a status reply, which is written only into a new private directory the
+requester created. Output contains local network addresses; review it before sharing.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build checks and the required PR workflow.
 LinkWatch is open source under the [MIT licence](LICENSE).

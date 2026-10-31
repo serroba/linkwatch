@@ -144,3 +144,22 @@ import Testing
   #expect(harness.controller.profiles.isEmpty)
   #expect(harness.controller.storageError == nil)
 }
+
+@MainActor
+@Test func reloadPicksUpProfilesSavedElsewhereAndFailsClosed() async {
+  let harness = Harness(profiles: nil)
+  _ = await harness.cycle()
+  #expect(harness.script.requests.isEmpty)
+  harness.store.saved = [homeProfile]
+  harness.controller.reloadProfiles()
+  #expect(harness.controller.profiles == [homeProfile])
+  _ = await harness.cycle()
+  #expect(harness.script.requests.count == 2)
+
+  harness.store.failsToLoad = true
+  harness.controller.reloadProfiles()
+  #expect(harness.controller.profiles.isEmpty)
+  #expect(harness.controller.storageError != nil)
+  _ = await harness.cycle()
+  #expect(harness.script.requests.count == 2)
+}

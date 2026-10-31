@@ -118,18 +118,29 @@ public final class MonitorController {
     self.store = store
     self.uptime = uptime
     healthSince = uptime()
+    loadProfiles()
+    refresh()
+  }
+
+  /// Rereads saved profiles, for changes made by another process such as the command line.
+  public func reloadProfiles() {
+    loadProfiles()
+    networkChanged()
+  }
+
+  private func loadProfiles() {
     do {
-      if let saved = try store.load() {
-        guard saved.allSatisfy(\.isValid), Set(saved.map(\.ssid)).count == saved.count else {
-          throw CocoaError(.coderReadCorrupt)
-        }
-        profiles = saved
+      let saved = try store.load() ?? []
+      guard saved.allSatisfy(\.isValid), Set(saved.map(\.ssid)).count == saved.count else {
+        throw CocoaError(.coderReadCorrupt)
       }
+      profiles = saved
+      storageError = nil
     } catch {
+      profiles = []
       storageError =
         "Saved profiles could not be read. Monitoring is paused until you save a profile."
     }
-    refresh()
   }
 
   public var isPermitted: Bool { environment.isPermitted }

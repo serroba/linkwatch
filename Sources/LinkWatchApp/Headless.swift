@@ -1,4 +1,3 @@
-import AppKit
 import Dispatch
 import Foundation
 import LinkWatchCore
@@ -27,13 +26,7 @@ enum Headless {
   static func start(_ command: HeadlessCommand) -> Never {
     record("pid", String(getpid()))
     Task { @MainActor in finish(await run(command)) }
-    guard command == .authorize else { dispatchMain() }
-    // CoreLocation only presents its prompt for a running application.
-    let application = NSApplication.shared
-    application.setActivationPolicy(.accessory)
-    application.activate(ignoringOtherApps: true)
-    application.run()
-    exit(0)
+    dispatchMain()
   }
 
   /// Exits, first recording the status for `scripts/linkwatch`, which launches through
@@ -57,31 +50,38 @@ enum Headless {
     switch command {
     case .help:
       write(HeadlessCommand.usage + "\n")
-    case .status(let json):
-      let monitor = await readyMonitor()
-      emit(StatusReport(controller: monitor.controller, now: uptime), json: json)
-    case .watch(let cycles, let json):
-      await watch(cycles: cycles, json: json)
+      return 0
+    case .status(let json, let local):
+      return await status(json: json, local: local)
+    case .watch(let cycles, let json, let local):
+      await watch(cycles: cycles, json: json, local: local)
+      return 0
     case .probe(let address, let interface, let count, let json):
       return await probe(address: address, interface: interface, count: count, json: json)
     case .neighbors(let json):
       emit(await neighbors(), json: json)
-    case .authorize:
-      return await authorize()
-    case .findAccessPoint(let json):
-      let monitor = await readyMonitor()
-      if !json { write("Searching the Wi-Fi subnet for the AP; this pings each address once.\n") }
-      await monitor.controller.searchForAccessPoint()
-      let report = StatusReport(controller: monitor.controller, now: uptime)
-      emit(report, json: json)
-      guard case .found = monitor.controller.discovery?.accessPoint else { return 1 }
+      return 0
+    default:
+      return await act(command)
     }
+  }
+
+  static func status(json: Bool, local: Bool) async -> Int32 {
+    if !local, let live = await AppControl.liveStatus() {
+      emit(live, json: json)
+      return 0
+    }
+    if !local && !json {
+      write("(The menu bar app is not running; showing a fresh local view.)\n", to: .standardError)
+    }
+    let monitor = await readyMonitor()
+    emit(StatusReport(controller: monitor.controller, now: uptime), json: json)
     return 0
   }
 
   /// CoreLocation reports "not determined" until locationd answers, so wait up to a second
   /// for a decision before reading the Wi-Fi identity.
-  private static func readyMonitor() async -> Monitor {
+  static func readyMonitor() async -> Monitor {
     let monitor = Monitor()
     for _ in 0..<20 where monitor.environment.authorizationDescription == "not determined" {
       try? await Task.sleep(for: .milliseconds(50))
@@ -90,37 +90,13 @@ enum Headless {
     return monitor
   }
 
-  private static var uptime: TimeInterval { ProcessInfo.processInfo.systemUptime }
+  static var uptime: TimeInterval { ProcessInfo.processInfo.systemUptime }
 
-  private static func authorize() async -> Int32 {
-    let environment = SystemEnvironment()
-    if environment.isPermitted {
-      write("Location permission is already granted.\n")
-      return 0
+  private static func watch(cycles: Int?, json: Bool, local: Bool) async {
+    if !local, await AppControl.liveStatus() != nil {
+      await follow(cycles: cycles, json: json)
+      return
     }
-    if environment.isDenied {
-      write(
-        "Location permission is \(environment.authorizationDescription); macOS will not ask again. Enable LinkWatch in System Settings › Privacy & Security › Location Services.\n",
-        to: .standardError)
-      return 77
-    }
-    write("Requesting Location permission. Answer the macOS prompt within 60 seconds.\n")
-    environment.requestAuthorization()
-    for _ in 0..<120 {
-      if environment.isPermitted {
-        write("Location permission granted.\n")
-        return 0
-      }
-      if environment.isDenied { break }
-      try? await Task.sleep(for: .milliseconds(500))
-    }
-    write(
-      "Location permission is \(environment.authorizationDescription). Enable LinkWatch in System Settings › Privacy & Security › Location Services, or use Allow Wi-Fi identification in the app's Settings.\n",
-      to: .standardError)
-    return 77
-  }
-
-  private static func watch(cycles: Int?, json: Bool) async {
     let monitor = await readyMonitor()
     var completed = 0
     while cycles.map({ completed < $0 }) ?? true {
@@ -133,6 +109,24 @@ enum Headless {
         write("— cycle \(completed) —\n\(report.text)\n")
       }
       if cycles.map({ completed < $0 }) ?? true { try? await Task.sleep(for: .seconds(delay)) }
+    }
+  }
+
+  /// Prints the running app's live state every two seconds without probing anything itself.
+  private static func follow(cycles: Int?, json: Bool) async {
+    var completed = 0
+    while cycles.map({ completed < $0 }) ?? true {
+      guard let report = await AppControl.liveStatus() else {
+        write("LinkWatch: the menu bar app stopped responding.\n", to: .standardError)
+        return
+      }
+      completed += 1
+      if json {
+        emit(report, json: true, compact: true)
+      } else {
+        write("— update \(completed) —\n\(report.text)\n")
+      }
+      if cycles.map({ completed < $0 }) ?? true { try? await Task.sleep(for: .seconds(2)) }
     }
   }
 
@@ -190,7 +184,7 @@ enum Headless {
         : nil)
   }
 
-  private static func emit(_ report: StatusReport, json: Bool, compact: Bool = false) {
+  static func emit(_ report: StatusReport, json: Bool, compact: Bool = false) {
     if json { emit(encodable: report, compact: compact) } else { write(report.text + "\n") }
   }
 
@@ -214,7 +208,7 @@ enum Headless {
     emit(encodable: report, compact: false)
   }
 
-  private static func emit(encodable value: some Encodable, compact: Bool) {
+  static func emit(encodable value: some Encodable, compact: Bool) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = compact ? [.sortedKeys] : [.sortedKeys, .prettyPrinted]
     guard let data = try? encoder.encode(value) else {
