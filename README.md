@@ -8,6 +8,11 @@ visible at the access point, or is the router responding noticeably later?”**
 It keeps paired measurements visible while you work, highlights sustained changes,
 and provides enough recent history to investigate intermittent problems.
 
+The direction is to answer the question people actually ask, **“which link is
+struggling, and what should I do about it?”**, in one plain sentence that anyone in
+the household can act on, while keeping the numbers available for whoever wants them.
+See the [roadmap](#roadmap).
+
 ## Intended experience
 
 The menu bar shows a health indicator and live numbers, for example
@@ -82,6 +87,60 @@ measurements, explicit profile selection, safe pause and lifecycle handling, and
 configurable sustained alerts. Real-network and UI verification are still needed.
 Developer ID signing, notarisation and release packaging remain separate work;
 this is not yet a public distribution release.
+
+## Roadmap
+
+A connection is a chain of links, and the common problems each live on a different one:
+
+```
+Home:     Mac ─Wi-Fi─ AP ─bridge (e.g. powerline adapters)─ Router ─ISP─ Internet
+Tether:   Mac ─Wi-Fi/USB─ Phone ─cellular─ Internet
+```
+
+Two everyday examples drive the plan: a Wi-Fi access point connected to the router
+through powerline adapters that degrade until they are restarted, and a laptop
+tethered to a phone, where the fix is either moving the phone for better reception or
+fixing the link between laptop and phone. Comparing neighbouring links locates the
+fault; reference points on the internet separate home problems from provider ones.
+
+Planned work, in order:
+
+1. **Internet reference points.** Probe Cloudflare (`1.1.1.1`) and Google
+   (`8.8.8.8`) alongside the AP and router. The internet is blamed only when both are
+   slow, so one provider's hiccup does not trigger advice. These probes leave the
+   local network and reveal the public address to those providers, so they are a
+   per-profile setting, documented, and slowed down on metered connections.
+2. **Plain-language verdict.** Each profile can name what sits between the AP and
+   the router (for example "Powerline adapters (TP-Link)"), and LinkWatch turns the
+   measurements into one sentence and at most one action:
+
+   | First hop | Router | Internet | Verdict |
+   |---|---|---|---|
+   | OK | OK | OK | Everything is working normally. |
+   | OK | slow or lost | any | Restart the bridge between the AP and the router (e.g. the powerline adapters). |
+   | slow, weak signal | slow | slow | The Wi-Fi signal is weak here; move closer. Restarting the bridge will not help. |
+   | slow, good signal | slow | slow | The access point itself is slow; try restarting it. |
+   | OK | OK | both slow | The internet provider is having trouble; nothing to fix at home. |
+   | Phone slow or lossy | — | any | The link to the phone is weak; bring the laptop closer, use a cable, or restart the hotspot. |
+   | Phone OK | — | both slow | Phone reception is poor; move the phone, for example near a window. |
+
+   Verdicts follow the existing sustained-alert rules and say "most likely": latency
+   differences are evidence, not proof of a faulty device.
+3. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
+   no extra traffic, to separate "move closer" from "the access point is struggling".
+4. **Simple mode.** Only the coloured icon and the sentence, with details one click
+   away, plus an optional notification once a problem has lasted a few minutes.
+5. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
+   marks the path as expensive and the first hop is also the router; the verdicts
+   switch to phone wording without setup.
+6. **"I restarted it."** Record a restart in the history and show its effect a few
+   minutes later, for example "router latency 85 → 4 ms".
+7. **Weekly summary.** From the stored week: incidents per link, typical duration and
+   time-of-day patterns, to decide whether to move or replace equipment.
+
+Later: Developer ID signing and notarisation so the app can be installed on other
+Macs without building it, and optionally power-cycling a bridge through a smart plug
+once verdicts have proven reliable.
 
 ## Build and run locally
 
