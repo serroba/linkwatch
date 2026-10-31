@@ -154,6 +154,7 @@ private struct DetailView: View {
           Text("Evaluating degradation: \(Int(latest.elapsed - since)) seconds").font(.caption)
         }
       }
+      RecentProblems(monitor: monitor)
       Divider()
       Toggle("Pause monitoring", isOn: $monitor.paused)
       HStack {

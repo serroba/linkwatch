@@ -57,3 +57,13 @@ extension MonitorController {
     }
   }
 }
+
+extension MonitorController {
+  /// Incidents from the last day, newest first, for the panel.
+  public var recentIncidents: [Incident] {
+    let since = now().addingTimeInterval(-86_400)
+    return IncidentTimeline.incidents(
+      from: week.minutes.filter { $0.start >= since }, profiles: profiles
+    ).reversed()
+  }
+}

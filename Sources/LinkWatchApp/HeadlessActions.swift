@@ -23,6 +23,7 @@ extension Headless {
     case .removeProfile(let ssid): return await removeProfile(ssid)
     case .history(let hours, let json): return history(hours: hours, json: json)
     case .clearHistory: return clearHistory()
+    case .incidents(let days, let json): return incidents(days: days, json: json)
     default:
       write("LinkWatch: unsupported command\n", to: .standardError)
       return 64
@@ -190,6 +191,34 @@ extension Headless {
     }
     let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
     write(HistoryTable.text(minutes, profiles: profiles))
+    return 0
+  }
+
+  static func incidents(days: Int, json: Bool) -> Int32 {
+    let since = Date().addingTimeInterval(-Double(days) * 86_400)
+    guard
+      let minutes = try? FileHistoryStore(directory: Monitor.supportDirectory).load(since: since)
+    else {
+      write("LinkWatch: history could not be read.\n", to: .standardError)
+      return 1
+    }
+    let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
+    let incidents = IncidentTimeline.incidents(from: minutes, profiles: profiles).reversed()
+    if json {
+      emit(encodable: Array(incidents), compact: false)
+      return 0
+    }
+    guard !incidents.isEmpty else {
+      write("No incidents in the last \(days) day\(days == 1 ? "" : "s").\n")
+      return 0
+    }
+    let bridges = Dictionary(profiles.map { ($0.ssid, $0.bridgeName) }) { first, _ in first }
+    for incident in incidents {
+      let bridge = bridges[incident.ssid] ?? nil
+      write(
+        incident.summary(bridge: bridge) + "\n  " + incident.evidence + "\n  → "
+          + (incident.verdict.action(bridge: bridge) ?? "No action needed.") + "\n")
+    }
     return 0
   }
 
