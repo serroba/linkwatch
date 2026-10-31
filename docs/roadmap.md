@@ -55,6 +55,10 @@ happened and which link failed, on the Mac where it happened.
 - **Simple panel and opt-in notifications**: only the advice with details one click
   away, and, when turned on, one notification when a problem lasts three minutes and
   another when it is back to normal.
+- **Desktop widget**: a translucent panel on the desktop (behind windows or on top)
+  with the verdict, latencies and a five-minute chart. A WidgetKit widget would need
+  a widget extension built with Xcode and Developer ID signing, and refreshes only
+  every few minutes.
 - **Update notice**: a daily check for a newer release and **Install update**, which
   runs the installer bundled in the app.
 - **App icon**, drawn by `scripts/make_icon.swift` at build time, so the repository

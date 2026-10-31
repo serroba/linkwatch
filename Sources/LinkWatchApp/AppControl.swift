@@ -16,6 +16,7 @@ enum AppControl {
     case resume
     case dismissSuggestion
     case detectPath
+    case applyWidget
     case requestPermission
     case reportStatus
     case mark
@@ -74,6 +75,8 @@ enum AppControl {
       .resume: { _ in controller.paused = false },
       .dismissSuggestion: { _ in controller.dismissSuggestion() },
       .detectPath: { _ in controller.detectPath() },
+      .applyWidget: { _ in NotificationCenter.default.post(name: DesktopWidget.changed, object: nil)
+      },
       .requestPermission: { _ in environment.requestPermission() },
       .mark: { notification in
         if let label = notification.userInfo?[labelKey] as? String { controller.mark(label) }

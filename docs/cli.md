@@ -58,6 +58,7 @@ running app immediately.
 | `export [--days N] [--dir PATH] [--redact]` | **Export report…**: writes `report.txt` (opening with the summary), `report.json`, `summary.json` and `minutes.json` for the last N days (default 7) into a dated folder and prints its path; `--redact` replaces network names, local addresses and hardware addresses with placeholders |
 | `authorize` | **Allow Wi-Fi identification**: asks the running app to show the Location prompt |
 | `update [--install] [--auto on\|off]` | Checks GitHub for a newer release now; `--install` runs the bundled installer (copies in an Applications folder only); `--auto` is Settings › **Check for updates once a day** |
+| `widget [on\|off] [--behind\|--on-top]` | Settings › **Show a desktop widget** and **Widget placement**; without arguments, shows the current state |
 | `notifications [on\|off]` | Settings › **Notify me when a problem lasts 3 minutes**; turning it on asks macOS for permission once; without an argument, shows the current state |
 | `open-at-login [on\|off]` | Settings › **Open LinkWatch at login**; without an argument, shows the current state |
 

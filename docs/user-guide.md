@@ -43,6 +43,14 @@ Click the icon to open the panel. From the top:
   the most likely cause. Hover over one to see the measurements behind it.
 - **Pause monitoring**, **Settings…** and **Quit**.
 
+## Desktop widget
+
+Turn on **Show a desktop widget** in Settings for a small translucent panel with the
+colour, the advice, the latency per link and the last five minutes, updated every two
+seconds. It sits on the desktop behind your windows, or always on top if you choose so
+under **Widget placement**. Drag it anywhere; it remembers where. Right-click it to
+switch placement or hide it.
+
 ## A simpler panel and notifications
 
 In Settings, **Simple panel** shows only the advice, the **I restarted…** menu and the

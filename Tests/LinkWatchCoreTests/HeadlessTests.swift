@@ -111,3 +111,15 @@ private func parsedUpdate(_ arguments: String...) throws -> ProfileUpdate {
     #expect(throws: HeadlessCommand.UsageError.self) { try HeadlessCommand.parse(invalid) }
   }
 }
+
+@Test func widgetCommandParses() throws {
+  #expect(try HeadlessCommand.parse(["widget"]) == .widget(nil, placement: nil))
+  #expect(
+    try HeadlessCommand.parse(["widget", "on", "--on-top"])
+      == .widget(.enabled, placement: .onTop))
+  #expect(
+    try HeadlessCommand.parse(["widget", "--behind"]) == .widget(nil, placement: .behindWindows))
+  for invalid in [["widget", "maybe"], ["widget", "--behind", "--on-top"]] {
+    #expect(throws: HeadlessCommand.UsageError.self) { try HeadlessCommand.parse(invalid) }
+  }
+}

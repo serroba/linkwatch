@@ -108,6 +108,21 @@ extension HeadlessCommand {
     return .update(install: install, automatic: automatic)
   }
 
+  static func widget(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
+    var options = arguments
+    var placement: WidgetPlacement?
+    for (flag, value) in [("--behind", WidgetPlacement.behindWindows), ("--on-top", .onTop)] {
+      if let index = options.firstIndex(of: flag) {
+        guard placement == nil else {
+          throw UsageError(description: "widget takes --behind or --on-top, not both")
+        }
+        options.remove(at: index)
+        placement = value
+      }
+    }
+    return .widget(try setting("widget", options), placement: placement)
+  }
+
   static func notifications(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
     .notifications(try setting("notifications", arguments))
   }

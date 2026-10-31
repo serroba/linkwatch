@@ -1,4 +1,5 @@
 import Combine
+import LinkWatchCore
 import SwiftUI
 
 @MainActor
@@ -12,6 +13,9 @@ private final class NotificationChoice: ObservableObject {
 struct PanelSettings: View {
   @AppStorage("simplePanel") private var simple = false
   @AppStorage("checkForUpdates") private var checkForUpdates = true
+  @AppStorage(DesktopWidget.shownKey) private var widgetShown = false
+  @AppStorage(DesktopWidget.placementKey) private var widgetPlacement = WidgetPlacement
+    .behindWindows.rawValue
   @StateObject private var choice = NotificationChoice()
 
   var body: some View {
@@ -31,6 +35,16 @@ struct PanelSettings: View {
         }
       Text(
         "One notification says what to do once a problem has lasted three minutes, and another when it is back to normal. Lag spikes, busy downloads and a router that only ignores pings do not notify."
+      )
+      .font(.caption).foregroundStyle(.secondary)
+      Toggle("Show a desktop widget", isOn: $widgetShown)
+      Picker("Widget placement", selection: $widgetPlacement) {
+        Text("On the desktop, behind windows").tag(WidgetPlacement.behindWindows.rawValue)
+        Text("Always on top").tag(WidgetPlacement.onTop.rawValue)
+      }
+      .disabled(!widgetShown)
+      Text(
+        "A small translucent panel with the colour, the advice and the latencies, updated every 2 seconds. Drag it anywhere; right-click it to hide it or change its placement."
       )
       .font(.caption).foregroundStyle(.secondary)
       Toggle("Check for updates once a day", isOn: $checkForUpdates)
