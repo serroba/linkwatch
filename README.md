@@ -134,7 +134,7 @@ Planned work, in order:
    differences are evidence, not proof of a faulty device.
    *Status:* implemented live, in `status` and in hourly history; the exact rules are
    in [monitoring semantics](docs/monitoring.md#verdict). Wi-Fi signal and tether
-   rows follow with items 6 and 8.
+   rows follow with items 7 and 9.
 3. **Incident timeline.** Consecutive problem minutes grouped into incidents with
    start, end, the failing link and the verdict, for example "yesterday 19:40–20:05:
    the link between the AP and the router failed (router 100% loss, AP and internet
@@ -149,16 +149,21 @@ Planned work, in order:
    Developer ID and notarisation; without it, Gatekeeper requires right-click › Open
    for each release. The signing key would live in CI secrets, so its handling must
    be decided deliberately.
-6. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
+6. **Usage patterns** (*implemented*). Download and upload rates from the Wi-Fi
+   interface's byte counters, live and per stored minute, with no extra traffic and
+   nothing about applications or destinations. A slow link while the Mac itself is
+   moving a lot of data is reported as **busy** rather than as a failing device, and
+   history shows megabytes per hour.
+7. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
    no extra traffic, to separate "move closer" from "the access point is struggling".
-7. **Simple mode.** Only the coloured icon and the sentence, with details one click
+8. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes.
-8. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
+9. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
    marks the path as expensive and the first hop is also the router; the verdicts
    switch to phone wording without setup.
-9. **"I restarted it."** Record a restart in the history and show its effect a few
+10. **"I restarted it."** Record a restart in the history and show its effect a few
    minutes later, for example "router latency 85 → 4 ms".
-10. **Weekly summary.** From the stored week: incidents per link, typical duration
+11. **Weekly summary.** From the stored week: incidents per link, typical duration
     and time-of-day patterns, to decide whether to move or replace equipment.
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
@@ -207,7 +212,7 @@ scripts/linkwatch find-ap           # opt-in one-time subnet ping to locate the 
 scripts/linkwatch pause | resume    # the panel's pause toggle
 scripts/linkwatch profile list | set --ssid NAME [--ap A] [--router R] [--difference MS ...]
 scripts/linkwatch profile remove NAME
-scripts/linkwatch history --hours 6 # hourly rollups of the stored week (--json: every minute)
+scripts/linkwatch history --hours 6 # hourly latency, loss, MB down/up and verdicts (--json: minutes)
 scripts/linkwatch history clear     # delete the stored week, as in Settings
 scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
 scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test

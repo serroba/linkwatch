@@ -20,17 +20,45 @@ public struct LinkEvidence: Equatable, Sendable {
   public var router: TargetEvidence
   /// Nil when the profile does not probe internet reference points.
   public var internet: TargetEvidence?
+  /// Whether the Mac was moving enough data to slow the connection by itself.
+  public var busy: Bool
 
-  public init(accessPoint: TargetEvidence, router: TargetEvidence, internet: TargetEvidence?) {
+  public init(
+    accessPoint: TargetEvidence, router: TargetEvidence, internet: TargetEvidence?,
+    busy: Bool = false
+  ) {
     self.accessPoint = accessPoint
     self.router = router
     self.internet = internet
+    self.busy = busy
   }
 
-  public init(_ minute: MinuteSummary) {
+  /// Evidence for a stored minute; `peakBitsPerSecond` is the busiest minute on that network.
+  public init(_ minute: MinuteSummary, peakBitsPerSecond: Double = 0) {
     accessPoint = TargetEvidence(median: minute.accessPoint.median, loss: minute.accessPoint.loss)
     router = TargetEvidence(median: minute.router.median, loss: minute.router.loss)
     internet = minute.internet.map { TargetEvidence(median: $0.median, loss: $0.loss) }
+    busy = minute.bitsPerSecond.map { Load.isBusy($0, peak: peakBitsPerSecond) } ?? false
+  }
+}
+
+/// Decides whether the Mac's own traffic explains slow responses.
+enum Load {
+  /// Below this rate traffic is too light to slow a home connection.
+  static let minimumBusyBitsPerSecond: Double = 1_000_000
+
+  /// Busy means at least 1 Mbit/s and at least half the busiest rate seen on the network,
+  /// which adapts to each connection's capacity without a speed test.
+  static func isBusy(_ bitsPerSecond: Double, peak: Double) -> Bool {
+    bitsPerSecond >= minimumBusyBitsPerSecond && bitsPerSecond >= peak / 2
+  }
+}
+
+extension MinuteSummary {
+  /// The faster direction's average rate over the minute, or nil without traffic data.
+  public var bitsPerSecond: Double? {
+    guard let received, let sent else { return nil }
+    return Double(max(received, sent)) * 8 / 60
   }
 }
 
@@ -47,6 +75,8 @@ public enum Verdict: String, Codable, Equatable, Sendable {
   case routerUnreachable
   /// Home links are fine; the internet beyond the router is slow or lost.
   case internet
+  /// A link is slow while the Mac itself is moving a lot of data, so nothing is broken.
+  case busy
 
   /// Internet references must be slower than the router by this much to blame the provider.
   public static let internetMargin: Double = 100
@@ -55,8 +85,10 @@ public enum Verdict: String, Codable, Equatable, Sendable {
   public init(_ evidence: LinkEvidence, thresholds: Thresholds) {
     let accessPoint = evidence.accessPoint
     let router = evidence.router
-    if accessPoint.isLost || (accessPoint.median ?? 0) > thresholds.slow {
+    if accessPoint.isLost {
       self = .accessPoint
+    } else if (accessPoint.median ?? 0) > thresholds.slow {
+      self = evidence.busy ? .busy : .accessPoint
     } else if router.isLost {
       // A silent router with a working internet is not a failing link: traffic still flows.
       switch evidence.internet?.isLost {
@@ -67,12 +99,13 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     } else if let accessPointMedian = accessPoint.median, let routerMedian = router.median,
       routerMedian - accessPointMedian > thresholds.difference
     {
-      self = .bridge
-    } else if let internet = evidence.internet,
-      internet.isLost
-        || (internet.median ?? 0) - (router.median ?? 0) > Self.internetMargin
-    {
+      self = evidence.busy ? .busy : .bridge
+    } else if let internet = evidence.internet, internet.isLost {
       self = .internet
+    } else if let internet = evidence.internet,
+      (internet.median ?? 0) - (router.median ?? 0) > Self.internetMargin
+    {
+      self = evidence.busy ? .busy : .internet
     } else {
       self = .allClear
     }
@@ -89,6 +122,8 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     case .routerSilent: "The router is not answering LinkWatch, but the internet works."
     case .routerUnreachable: "The router is not answering LinkWatch."
     case .internet: "Your internet provider is having trouble."
+    case .busy:
+      "The connection is busy with a large download or upload, which slows everything else."
     }
   }
 
@@ -109,6 +144,7 @@ public enum Verdict: String, Codable, Equatable, Sendable {
         + (bridge.map { "the \($0)." } ?? "the device linking the access point to the router.")
         + " Turning on internet reference points lets LinkWatch tell the difference."
     case .internet: "Nothing to fix at home; wait, or contact the provider if it lasts."
+    case .busy: "Nothing is broken. Wait for the transfer to finish, or pause it."
     }
   }
 

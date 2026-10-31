@@ -42,3 +42,30 @@ private func message(address: [UInt8], hardware: [UInt8], interface: UInt32) -> 
     #expect(if_nametoindex(entry.interface) > 0)
   }
 }
+
+@Test func countersComeFromTheMatchingInterfaceMessage() {
+  func message(index: UInt16, received: UInt64, sent: UInt64, type: Int32 = RTM_IFINFO2) -> [UInt8]
+  {
+    var header = if_msghdr2()
+    header.ifm_msglen = UInt16(MemoryLayout<if_msghdr2>.size)
+    header.ifm_type = UInt8(type)
+    header.ifm_index = index
+    header.ifm_data.ifi_ibytes = received
+    header.ifm_data.ifi_obytes = sent
+    return withUnsafeBytes(of: header) { Array($0) }
+  }
+  let bytes =
+    message(index: 4, received: 1, sent: 2, type: RTM_IFINFO)
+    + message(index: 9, received: 5_000_000_000, sent: 6)
+    + message(index: 4, received: 7_000_000_000, sent: 8)
+  #expect(
+    InterfaceCounters.counters(in: bytes, index: 4)
+      == TrafficCounters(received: 7_000_000_000, sent: 8))
+  #expect(InterfaceCounters.counters(in: bytes, index: 3) == nil)
+  #expect(InterfaceCounters.counters(in: Array(bytes.prefix(10)), index: 4) == nil)
+}
+
+@Test func systemCountersAreReadableForLoopback() {
+  #expect(InterfaceCounters.traffic(on: "lo0") != nil)
+  #expect(InterfaceCounters.traffic(on: "no-such-interface") == nil)
+}

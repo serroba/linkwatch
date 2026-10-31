@@ -6,7 +6,9 @@ extension MonitorController {
   func updateVerdict(at elapsed: TimeInterval) {
     guard let profile = session.profile else { return }
     let thresholds = profile.thresholds
-    let observed = Verdict(session.window.evidence, thresholds: thresholds)
+    var evidence = session.window.evidence
+    evidence.busy = isBusy
+    let observed = Verdict(evidence, thresholds: thresholds)
     guard observed != verdict else {
       pendingVerdict = nil
       return

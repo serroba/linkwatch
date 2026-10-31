@@ -37,6 +37,23 @@ public struct InterfaceAddress: Equatable, Sendable {
   }
 }
 
+/// Bytes an interface has received and sent, as cumulative counters or as a delta.
+public struct TrafficCounters: Equatable, Sendable {
+  public var received: UInt64
+  public var sent: UInt64
+
+  public init(received: UInt64, sent: UInt64) {
+    self.received = received
+    self.sent = sent
+  }
+}
+
+/// The Mac's current download and upload rate on the monitored interface.
+public struct Usage: Equatable, Sendable {
+  public var downloadBitsPerSecond: Double
+  public var uploadBitsPerSecond: Double
+}
+
 /// Progress of an explicitly requested access point search.
 public enum AccessPointSearch: Equatable, Sendable {
   case idle
@@ -55,6 +72,8 @@ public protocol NetworkEnvironment: AnyObject {
   /// Existing ARP cache entries; implementations must not send traffic to populate it.
   func neighbors() -> [NeighborEntry]
   func interfaceAddress(_ interface: String) -> InterfaceAddress?
+  /// Cumulative byte counters for the interface, read without sending traffic.
+  func traffic(on interface: String) -> TrafficCounters?
 }
 
 /// Persists approved network profiles on this Mac.
@@ -102,6 +121,12 @@ public final class MonitorController {
   /// The sustained verdict: a change must hold for the profile's alert or recovery time.
   public internal(set) var verdict = Verdict.allClear
   @ObservationIgnored var pendingVerdict: (verdict: Verdict, since: TimeInterval)?
+  /// The latest download and upload rate, or nil before two readings on one network.
+  public internal(set) var usage: Usage?
+  @ObservationIgnored var lastTraffic: TrafficReading?
+  /// Rates from the last five cycles and the highest seen in this session.
+  @ObservationIgnored var recentRates: [Double] = []
+  @ObservationIgnored var sessionPeakRate: Double = 0
   public internal(set) var historyError: String?
 
   @ObservationIgnored let environment: any NetworkEnvironment
@@ -231,7 +256,7 @@ public final class MonitorController {
     {
       inFlight?.cancel()
       healthSince = uptime()
-      flushHistory()
+      resetDerivedState()
     }
     reason = currentReason()
   }
@@ -261,7 +286,7 @@ public final class MonitorController {
       let previous = session.window.health
       session.accept(pair, generation: generation)
       if generation == session.generation, session.window.samples.last == pair {
-        record(pair)
+        record(pair, traffic: trafficDelta(on: network.interface, at: pair.elapsed))
         updateVerdict(at: pair.elapsed)
       }
       if previous != session.window.health { healthSince = uptime() }
@@ -312,11 +337,21 @@ public final class MonitorController {
     return true
   }
 
-  private func invalidate() {
-    inFlight?.cancel()
+  /// Clears everything computed from the previous session's samples, so a pause or network
+  /// change never shows stale advice or rates.
+  private func resetDerivedState() {
     flushHistory()
     verdict = .allClear
     pendingVerdict = nil
+    usage = nil
+    lastTraffic = nil
+    recentRates = []
+    sessionPeakRate = 0
+  }
+
+  private func invalidate() {
+    inFlight?.cancel()
+    resetDerivedState()
     session.reset()
     healthSince = uptime()
   }
