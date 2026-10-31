@@ -28,6 +28,8 @@ public struct MinuteSummary: Codable, Equatable, Sendable {
   public var samples: Int
   public var accessPoint: TargetSummary
   public var router: TargetSummary
+  /// The best internet reference per pair; nil when the profile did not probe references.
+  public var internet: TargetSummary?
   /// The most severe state seen during the minute: `healthy`, `bothSlow`, `routerSlower` or
   /// `unreachable`.
   public var worstHealth: String
@@ -82,7 +84,10 @@ public struct WeekHistory: Sendable {
     let summary = MinuteSummary(
       start: minute, ssid: ssid, samples: pairs.count,
       accessPoint: TargetSummary(pairs.map(\.accessPoint)),
-      router: TargetSummary(pairs.map(\.router)), worstHealth: Self.labels[worst])
+      router: TargetSummary(pairs.map(\.router)),
+      internet: pairs.contains { $0.internetBest != nil }
+        ? TargetSummary(pairs.compactMap(\.internetBest)) : nil,
+      worstHealth: Self.labels[worst])
     minutes.append(summary)
     return summary
   }

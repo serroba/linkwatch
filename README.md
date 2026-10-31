@@ -57,7 +57,8 @@ Settings and history stay on the Mac, and there is no telemetry. The last hour i
 kept in memory as raw 2-second pairs; per-minute summaries (median, 95th percentile
 and loss for each target, and the worst state) are stored privately for seven days
 and can be cleared in Settings. The only subnet-wide traffic is the explicit,
-one-time **Find AP** search. macOS Location permission is used to identify the
+one-time **Find AP** search and, when enabled for a profile, the internet reference
+pings to Cloudflare and Google. macOS Location permission is used to identify the
 current Wi-Fi network; the app does not need location coordinates.
 Probes bind to the selected Wi-Fi interface. Network changes, roaming and
 sleep/wake must cancel pending work and discard stale measurements.
@@ -103,6 +104,10 @@ tethered to a phone, where the fix is either moving the phone for better recepti
 fixing the link between laptop and phone. Comparing neighbouring links locates the
 fault; reference points on the internet separate home problems from provider ones.
 
+History matters as much as live state: when someone says "the internet wasn't
+working last night", the stored week should show **when** it happened and **which
+link** failed, on the Mac where it happened.
+
 Planned work, in order:
 
 1. **Internet reference points.** Probe Cloudflare (`1.1.1.1`) and Google
@@ -110,9 +115,10 @@ Planned work, in order:
    slow, so one provider's hiccup does not trigger advice. These probes leave the
    local network and reveal the public address to those providers, so they are a
    per-profile setting, documented, and slowed down on metered connections.
-2. **Plain-language verdict.** Each profile can name what sits between the AP and
-   the router (for example "Powerline adapters (TP-Link)"), and LinkWatch turns the
-   measurements into one sentence and at most one action:
+2. **Plain-language verdict, live and in history.** Each profile can name what sits
+   between the AP and the router (for example "Powerline adapters (TP-Link)"), and
+   LinkWatch turns measurements into one sentence and at most one action. The same
+   rules classify every stored minute, so past problems get the same explanation:
 
    | First hop | Router | Internet | Verdict |
    |---|---|---|---|
@@ -126,21 +132,34 @@ Planned work, in order:
 
    Verdicts follow the existing sustained-alert rules and say "most likely": latency
    differences are evidence, not proof of a faulty device.
-3. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
+3. **Incident timeline.** Consecutive problem minutes grouped into incidents with
+   start, end, the failing link and the verdict, for example "yesterday 19:40–20:05:
+   the link between the AP and the router failed (router 100% loss, AP and internet
+   fine)". Shown in the app and by `scripts/linkwatch incidents --days 7`.
+4. **Shareable report.** An **Export report** button that writes a short text and
+   JSON summary of recent incidents and minute data, to send by AirDrop or message to
+   whoever looks after the network. It contains local addresses, so it is only
+   created on request and never sent automatically.
+5. **Releases.** Versioned builds from CI attached to GitHub Releases on each tag,
+   then an easy update path (a Homebrew tap or an in-app update notice), so new
+   versions install on another Mac without building. A clean install needs an Apple
+   Developer ID and notarisation; without it, Gatekeeper requires right-click › Open
+   for each release. The signing key would live in CI secrets, so its handling must
+   be decided deliberately.
+6. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
    no extra traffic, to separate "move closer" from "the access point is struggling".
-4. **Simple mode.** Only the coloured icon and the sentence, with details one click
+7. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes.
-5. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
+8. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
    marks the path as expensive and the first hop is also the router; the verdicts
    switch to phone wording without setup.
-6. **"I restarted it."** Record a restart in the history and show its effect a few
+9. **"I restarted it."** Record a restart in the history and show its effect a few
    minutes later, for example "router latency 85 → 4 ms".
-7. **Weekly summary.** From the stored week: incidents per link, typical duration and
-   time-of-day patterns, to decide whether to move or replace equipment.
+10. **Weekly summary.** From the stored week: incidents per link, typical duration
+    and time-of-day patterns, to decide whether to move or replace equipment.
 
-Later: Developer ID signing and notarisation so the app can be installed on other
-Macs without building it, and optionally power-cycling a bridge through a smart plug
-once verdicts have proven reliable.
+Later: optionally power-cycling a bridge through a smart plug once verdicts have
+proven reliable.
 
 ## Build and run locally
 

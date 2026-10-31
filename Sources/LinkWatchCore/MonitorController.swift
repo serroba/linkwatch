@@ -241,12 +241,15 @@ public final class MonitorController {
       let generation = session.generation
       let probe = probe
       let uptime = uptime
+      let references = profile.internetReferences ? InternetReference.all.map(\.address) : []
       let task = Task {
         async let accessPoint = probe.measure(
           address: profile.accessPoint, interface: network.interface)
         async let router = probe.measure(address: profile.router, interface: network.interface)
-        let outcomes = await (accessPoint, router)
-        return ProbePair(elapsed: uptime(), accessPoint: outcomes.0, router: outcomes.1)
+        async let internet = Self.measure(references, over: network.interface, with: probe)
+        let outcomes = await (accessPoint, router, internet)
+        return ProbePair(
+          elapsed: uptime(), accessPoint: outcomes.0, router: outcomes.1, internet: outcomes.2)
       }
       inFlight = task
       let pair = await task.value

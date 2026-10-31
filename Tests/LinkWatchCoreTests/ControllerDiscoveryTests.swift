@@ -21,7 +21,9 @@ import Testing
   #expect(harness.controller.profiles.map(\.accessPoint) == ["192.0.2.2"])
   #expect(harness.controller.suggestion == nil)
   _ = await harness.cycle()
-  #expect(Set(harness.script.requests) == ["192.0.2.2@en0", "192.0.2.1@en0"])
+  #expect(
+    Set(harness.script.requests)
+      == ["192.0.2.2@en0", "192.0.2.1@en0", "1.1.1.1@en0", "8.8.8.8@en0"])
 }
 
 @MainActor

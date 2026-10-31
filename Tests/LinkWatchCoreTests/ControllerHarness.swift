@@ -3,7 +3,9 @@ import Foundation
 @testable import LinkWatchCore
 
 let homeNetwork = NetworkIdentity(ssid: "Home", bssid: "00:00:5e:00:53:01", interface: "en0")
-let homeProfile = NetworkProfile(ssid: "Home", accessPoint: "192.0.2.2", router: "192.0.2.1")
+/// Internet references are off so local tests count only AP and router probes.
+let homeProfile = NetworkProfile(
+  ssid: "Home", accessPoint: "192.0.2.2", router: "192.0.2.1", internetReferences: false)
 
 @MainActor
 final class FakeEnvironment: NetworkEnvironment {

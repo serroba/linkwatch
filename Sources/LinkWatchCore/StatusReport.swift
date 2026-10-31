@@ -8,6 +8,16 @@ public struct StatusReport: Codable, Equatable, Sendable {
     public var routerMinusAccessPoint: Double?
     public var accessPointLoss: Double
     public var routerLoss: Double
+    /// Best internet reference median and loss; nil when references are not probed.
+    public var internet: Double?
+    public var internetLoss: Double?
+    public var references: [Reference]
+  }
+
+  public struct Reference: Codable, Equatable, Sendable {
+    public var name: String
+    public var address: String
+    public var median: Double?
   }
 
   public struct HistoryPoint: Codable, Equatable, Sendable {
@@ -73,7 +83,15 @@ public struct StatusReport: Codable, Equatable, Sendable {
     latency = Latency(
       accessPoint: accessPoint, router: router,
       routerMinusAccessPoint: accessPoint.flatMap { value in router.map { $0 - value } },
-      accessPointLoss: window.accessPointLoss, routerLoss: window.routerLoss)
+      accessPointLoss: window.accessPointLoss, routerLoss: window.routerLoss,
+      internet: window.internetMedian, internetLoss: window.internetLoss,
+      references: window.internetLoss == nil
+        ? []
+        : InternetReference.all.enumerated().map { index, reference in
+          Reference(
+            name: reference.name, address: reference.address,
+            median: window.referenceMedian(index))
+        })
     let alerting = profile != nil && !window.samples.isEmpty && window.health != .healthy
     alertSeconds = alerting ? now - controller.healthSince : nil
     evaluatingSeconds = window.pendingSince.flatMap { since in
@@ -160,6 +178,7 @@ extension StatusReport {
       latencyText += String(format: " · Router − AP %+.1f ms", difference)
     }
     lines.append(latencyText)
+    lines.append("Internet:    \(internetText)")
     lines.append(
       String(
         format: "Loss:        AP %.0f%% · Router %.0f%% over %d samples",
@@ -179,6 +198,13 @@ extension StatusReport {
     }
     if let storageError { lines.append("Storage:     \(storageError)") }
     return lines.joined(separator: "\n")
+  }
+
+  private var internetText: String {
+    guard let loss = latency.internetLoss else { return "not probed for this network" }
+    let references = latency.references.map { "\($0.name) \(Self.milliseconds($0.median))" }
+    return references.joined(separator: " · ")
+      + String(format: " · best of both lost %.0f%%", loss * 100)
   }
 
   private var alertText: String {
@@ -250,6 +276,9 @@ extension StatusReport.Latency {
     try container.encode(routerMinusAccessPoint, forKey: .routerMinusAccessPoint)
     try container.encode(accessPointLoss, forKey: .accessPointLoss)
     try container.encode(routerLoss, forKey: .routerLoss)
+    try container.encode(internet, forKey: .internet)
+    try container.encode(internetLoss, forKey: .internetLoss)
+    try container.encode(references, forKey: .references)
   }
 }
 
