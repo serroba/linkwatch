@@ -39,7 +39,9 @@ replace names and addresses with `network-N`, `address-N` and `device-N`.
 sleep and wake, Wi-Fi changes, permission changes, pauses, verdict changes and
 **marks**: labels the user added ("desk moved"). Use them to explain gaps (each gap
 carries `before` and `after` events) and to test hypotheses: compare the minutes
-right after each mark with the rest.
+right after each mark with the rest. `markEffects` already does this per label:
+typical spikes per link after the marks versus otherwise, problem-minute share and a
+cautious conclusion (it needs three or more marks).
 
 ## 2. Check the data can answer the question
 

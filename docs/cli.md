@@ -26,7 +26,7 @@ addresses; review it before sharing.
 
 | Command | What it shows | Sends traffic |
 |---|---|---|
-| `diagnose [--hours N]` | The answer first: live verdict, coverage and unmonitored gaps, incidents with evidence, hourly history and notes on permissions, VPN and missing data. Default 24 h, up to 168. | No |
+| `diagnose [--hours N]` | The answer first: live verdict, coverage and unmonitored gaps (explained by events), incidents with evidence, the effect of marked activities, hourly history, events and notes on permissions, VPN and missing data. Default 24 h, up to 168. | No |
 | `status [--local]` | Everything the panel shows. Reads the running app; `--local` builds a fresh view. | No |
 | `watch [--cycles N] [--local]` | `status` every two seconds. Follows the running app; with `--local` or no app running it monitors itself, probing only approved networks. | Only when monitoring itself |
 | `incidents [--days N]` | Problems of the last N days (default 7): span, likely cause, evidence per link, action. | No |
