@@ -83,6 +83,17 @@ router, busy). Evidence per link is the slowest minute median and the
 sample-weighted loss, plus bytes moved. Incidents are computed when read, so rule
 changes apply to the whole week.
 
+## Events
+
+The menu bar app records app and system events as JSON Lines in `events.jsonl`, next
+to the history (owner-only, seven days): launches with the version, quits, sleep and
+wake, Wi-Fi joined, left or roamed, Location permission granted or missing,
+monitoring started or stopped with the reason, pauses, verdict changes, profile and
+history changes, and **marks**, short labels a person adds ("desk moved") to match
+with the measurements. Only changes are recorded, never repeated state. `diagnose`
+lists recent events and explains each unmonitored gap with the last event before it
+and the first after it, allowing a minute either side.
+
 ## Usage
 
 Each cycle reads the Wi-Fi interface's 64-bit byte counters from the kernel

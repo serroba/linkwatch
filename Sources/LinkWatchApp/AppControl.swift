@@ -17,17 +17,22 @@ enum AppControl {
     case dismissSuggestion
     case requestPermission
     case reportStatus
+    case mark
 
     var name: Notification.Name { Notification.Name("io.github.serroba.LinkWatch.\(rawValue)") }
   }
 
   private static let replyKey = "reply"
+  private static let labelKey = "label"
   private static let replyName = "status.json"
   private static let directoryPrefix = "LinkWatch-reply-"
 
-  static func post(_ message: Message, reply: URL? = nil) {
+  static func post(_ message: Message, reply: URL? = nil, label: String? = nil) {
+    var userInfo: [String: String] = [:]
+    if let reply { userInfo[replyKey] = reply.path }
+    if let label { userInfo[labelKey] = label }
     DistributedNotificationCenter.default().postNotificationName(
-      message.name, object: nil, userInfo: reply.map { [replyKey: $0.path] },
+      message.name, object: nil, userInfo: userInfo.isEmpty ? nil : userInfo,
       deliverImmediately: true)
   }
 
@@ -66,6 +71,9 @@ enum AppControl {
       .resume: { _ in controller.paused = false },
       .dismissSuggestion: { _ in controller.dismissSuggestion() },
       .requestPermission: { _ in environment.requestPermission() },
+      .mark: { notification in
+        if let label = notification.userInfo?[labelKey] as? String { controller.mark(label) }
+      },
       .reportStatus: { notification in
         guard let path = notification.userInfo?[replyKey] as? String else { return }
         let report = StatusReport(controller: controller, now: ProcessInfo.processInfo.systemUptime)

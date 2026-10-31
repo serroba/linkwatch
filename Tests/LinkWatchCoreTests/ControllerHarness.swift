@@ -86,6 +86,15 @@ final class Clock {
   var date: Date { Date(timeIntervalSinceReferenceDate: 800_000_040 + now - 100) }
 }
 
+final class FakeEventStore: EventStore {
+  var saved: [AppEvent] = []
+  func append(_ event: AppEvent) throws { saved.append(event) }
+  func load(since date: Date) throws -> [AppEvent] { saved.filter { $0.time >= date } }
+  func prune(before date: Date) throws { saved.removeAll { $0.time < date } }
+
+  var kinds: [AppEvent.Kind] { saved.map(\.kind) }
+}
+
 class FakeHistoryStore: HistoryStore {
   var saved: [MinuteSummary] = []
   var failsToLoad = false
@@ -120,6 +129,7 @@ struct Harness {
   let clock = Clock()
   let store: FakeStore
   let history: FakeHistoryStore
+  let events = FakeEventStore()
   let controller: MonitorController
 
   init(
@@ -132,7 +142,7 @@ struct Harness {
     self.history = history
     controller = MonitorController(
       environment: environment, probe: FakeProbe(script: script), store: store,
-      history: history, uptime: { clock.now }, now: { clock.date })
+      history: history, events: events, uptime: { clock.now }, now: { clock.date })
   }
 
   func cycle(advancing seconds: TimeInterval = 2) async -> TimeInterval {

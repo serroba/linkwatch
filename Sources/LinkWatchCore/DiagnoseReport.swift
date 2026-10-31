@@ -5,6 +5,10 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
   public struct Gap: Codable, Equatable, Sendable {
     public var start: Date
     public var end: Date
+    /// The last event before the gap, which usually explains it ("asleep", "quit").
+    public var before: String?
+    /// The first event after it ("awake", "launched: 0.3.0").
+    public var after: String?
   }
 
   public var generatedAt: Date
@@ -24,14 +28,18 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
   public var gaps: [Gap]
   public var incidents: [Incident]
   public var hourly: [HourSummary]
+  /// App and system events in the period, oldest first.
+  public var events: [AppEvent]
   public var notes: [String]
 
   public static let minimumGapMinutes = 10
+  /// The text report lists this many recent events; JSON has them all.
+  public static let textEventLimit = 40
 
   public init(
     status: StatusReport, appRunning: Bool, minutes: [MinuteSummary],
     profiles: [NetworkProfile], hours: Int, now: Date, primaryInterface: String?,
-    appVersion: String? = nil, opensAtLogin: Bool = true
+    appVersion: String? = nil, opensAtLogin: Bool = true, events: [AppEvent] = []
   ) {
     let since = now.addingTimeInterval(-Double(hours) * 3600)
     let window = minutes.filter { $0.start >= since && $0.start <= now }
@@ -44,7 +52,17 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
     self.primaryInterface = primaryInterface
     let recorded = Set(window.map(\.start))
     coverage = min(1, Double(recorded.count) / (Double(hours) * 60))
-    gaps = Self.gaps(recorded: recorded, since: since, now: now)
+    let windowEvents = events.filter { $0.time >= since && $0.time <= now }
+      .sorted { $0.time < $1.time }
+    self.events = windowEvents
+    gaps = Self.gaps(recorded: recorded, since: since, now: now).map { gap in
+      var annotated = gap
+      // The cause usually lands inside the first missing minute, and the recovery inside
+      // the last one, so each side allows a minute.
+      annotated.before = windowEvents.last { $0.time < gap.start.addingTimeInterval(60) }?.summary
+      annotated.after = windowEvents.first { $0.time > gap.end.addingTimeInterval(-60) }?.summary
+      return annotated
+    }
     incidents = IncidentTimeline.incidents(from: window, profiles: profiles)
     hourly = HistoryRollup.hours(window, profiles: profiles)
     notes = []
@@ -130,7 +148,10 @@ extension DiagnoseReport {
         + (gaps.isEmpty ? "" : "; gaps:"))
     for gap in gaps {
       let minutes = Int(gap.end.timeIntervalSince(gap.start) / 60)
-      lines.append("  \(time.string(from: gap.start)) for \(minutes) min")
+      var context = [gap.before.map { "after \($0)" }, gap.after.map { "until \($0)" }]
+        .compactMap { $0 }.joined(separator: ", ")
+      if !context.isEmpty { context = " (" + context + ")" }
+      lines.append("  \(time.string(from: gap.start)) for \(minutes) min\(context)")
     }
     lines.append("")
     lines.append("Incidents: \(incidents.count)")
@@ -144,6 +165,13 @@ extension DiagnoseReport {
       lines.append("")
       lines.append("Hourly")
       lines += HistoryRollup.table(hourly).split(separator: "\n").map { "  " + $0 }
+    }
+    if !events.isEmpty {
+      lines.append("")
+      lines.append("Events (latest \(min(events.count, Self.textEventLimit)) of \(events.count))")
+      lines += events.suffix(Self.textEventLimit).map {
+        "  \(time.string(from: $0.time))  \($0.summary)"
+      }
     }
     if !notes.isEmpty {
       lines.append("")

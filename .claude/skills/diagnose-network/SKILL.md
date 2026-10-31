@@ -35,6 +35,12 @@ member's Mac by AirDrop), do not run `diagnose`: this Mac's data is not theirs. 
 with which version it was made; the period ends at `generatedAt`. Redacted reports
 replace names and addresses with `network-N`, `address-N` and `device-N`.
 
+`events` in the report (and `scripts/linkwatch events --hours N`) list launches,
+sleep and wake, Wi-Fi changes, permission changes, pauses, verdict changes and
+**marks**: labels the user added ("desk moved"). Use them to explain gaps (each gap
+carries `before` and `after` events) and to test hypotheses: compare the minutes
+right after each mark with the rest.
+
 ## 2. Check the data can answer the question
 
 Before concluding anything, read `appRunning`, `status.permitted`, `coverage`, `gaps`

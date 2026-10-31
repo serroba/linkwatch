@@ -38,6 +38,15 @@ Click the icon to open the panel. From the top:
   the most likely cause. Hover over one to see the measurements behind it.
 - **Pause monitoring**, **Settings…** and **Quit**.
 
+## Marking what you were doing
+
+If you suspect something at home affects the connection (an electric desk, a
+microwave, a heater), type what you are doing into **What just happened?** in the
+panel and click **Mark** each time you use it. The marks are saved with the
+measurements, so whoever looks at the data later can see whether problems follow
+them. Powerline adapters are particularly sensitive to electrical noise from motors
+and power supplies.
+
 ## Setting up a network
 
 LinkWatch only watches networks you approve.

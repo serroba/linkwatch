@@ -134,6 +134,8 @@ public final class MonitorController {
   @ObservationIgnored private let store: any ProfileStore
   @ObservationIgnored private let uptime: @MainActor () -> TimeInterval
   @ObservationIgnored let historyStore: any HistoryStore
+  @ObservationIgnored let events: any EventStore
+  @ObservationIgnored var observed = ObservedState()
   @ObservationIgnored let now: @MainActor () -> Date
   @ObservationIgnored private var inFlight: Task<ProbePair, Never>?
   @ObservationIgnored private var dismissed: Set<String> = []
@@ -143,13 +145,14 @@ public final class MonitorController {
 
   public init(
     environment: any NetworkEnvironment, probe: any LatencyProbe, store: any ProfileStore,
-    history: any HistoryStore, uptime: @escaping @MainActor () -> TimeInterval,
-    now: @escaping @MainActor () -> Date
+    history: any HistoryStore, events: any EventStore,
+    uptime: @escaping @MainActor () -> TimeInterval, now: @escaping @MainActor () -> Date
   ) {
     self.environment = environment
     self.probe = probe
     self.store = store
     self.historyStore = history
+    self.events = events
     self.uptime = uptime
     self.now = now
     healthSince = uptime()
@@ -208,11 +211,15 @@ public final class MonitorController {
     guard profile.isValid else { return false }
     var updated = profiles.filter { $0.id != profile.id && $0.ssid != profile.ssid }
     updated.append(profile)
-    return persist(updated)
+    guard persist(updated) else { return false }
+    record(.profileSaved, detail: profile.ssid)
+    return true
   }
 
   public func remove(_ profile: NetworkProfile) {
-    persist(profiles.filter { $0.id != profile.id })
+    if persist(profiles.filter { $0.id != profile.id }) {
+      record(.profileRemoved, detail: profile.ssid)
+    }
   }
 
   public func setSleeping(_ sleeping: Bool) {
@@ -259,6 +266,7 @@ public final class MonitorController {
       resetDerivedState()
     }
     reason = currentReason()
+    recordTransitions()
   }
 
   /// Runs one paired measurement and returns the delay before the next cycle.

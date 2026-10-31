@@ -51,6 +51,8 @@ private enum ChartRange: String, CaseIterable, Identifiable {
 private final class DetailOptions: ObservableObject {
   @Published var range = ChartRange.hour
   @Published var exportMessage: String?
+  @Published var markText = ""
+  @Published var markMessage: String?
 }
 
 private struct DetailView: View {
@@ -138,6 +140,16 @@ private struct DetailView: View {
         }
       }
       RecentProblems(monitor: monitor)
+      HStack {
+        TextField("What just happened? e.g. desk moved", text: $options.markText)
+          .textFieldStyle(.roundedBorder).font(.caption)
+          .onSubmit(markMoment)
+        Button("Mark", action: markMoment).disabled(AppEvent.markLabel(options.markText) == nil)
+      }
+      .help("Notes what you are doing now, so problems can be matched with it later.")
+      if let message = options.markMessage {
+        Text(message).font(.caption2).foregroundStyle(.secondary)
+      }
       Divider()
       Toggle("Pause monitoring", isOn: $monitor.paused)
       HStack {
@@ -166,6 +178,12 @@ private struct DetailView: View {
     }
     .padding(18)
     .frame(width: 360)
+  }
+
+  private func markMoment() {
+    guard monitor.mark(options.markText) else { return }
+    options.markMessage = "Marked “\(AppEvent.markLabel(options.markText) ?? "")”."
+    options.markText = ""
   }
 
   private func metric(_ title: String, value: Double?) -> some View {

@@ -19,6 +19,8 @@ public enum HeadlessCommand: Equatable, Sendable {
   case clearHistory
   case openAtLogin(ProfileUpdate.Switch?)
   case export(days: Int, directory: String?, redact: Bool)
+  case events(hours: Int, json: Bool)
+  case mark(String)
   case help
 
   public struct UsageError: Error, Equatable, CustomStringConvertible {
@@ -40,6 +42,9 @@ public enum HeadlessCommand: Equatable, Sendable {
                              (probing only networks with a saved profile, like the app).
       history [--hours N]    Show stored history for the last N hours (default 24, up to 168):
                              hourly rollups in text, every minute summary with --json.
+      events [--hours N]     App and system events (launches, sleep, Wi-Fi changes, permission
+                             changes, pauses, verdict changes) for the last N hours (default
+                             24, up to 168), which explain gaps and odd periods.
       neighbors              List cached ARP neighbours on the Wi-Fi interface and which one
                              matches the associated BSSID. Sends no traffic.
       probe ADDRESS [--interface NAME] [--count N]
@@ -53,6 +58,8 @@ public enum HeadlessCommand: Equatable, Sendable {
                              once, so the ARP cache can reveal the AP, then show the result.
                              Sends traffic; run it only on networks you are allowed to scan.
       pause | resume         Pause or resume monitoring in the running app.
+      mark LABEL             Note what you are doing now, such as "desk moved", so incidents
+                             and reports show it next to the measurements.
       profile list           List saved profiles.
       profile set --ssid NAME [--ap ADDRESS] [--router ADDRESS]
                   [--difference MS] [--recovery-difference MS] [--slow MS]
@@ -116,6 +123,8 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "diagnose": try diagnose(options, json: json)
     case "open-at-login": try openAtLogin(options)
     case "export": try export(options)
+    case "events": try events(options, json: json)
+    case "mark": try mark(options)
     default: nil
     }
   }
@@ -138,103 +147,13 @@ public enum HeadlessCommand: Equatable, Sendable {
     return .watch(cycles: cycles, json: json, local: local)
   }
 
-  private static func probe(_ arguments: [String], json: Bool) throws(UsageError)
-    -> HeadlessCommand
-  {
-    var options = arguments
-    let interface = try take(value: "--interface", from: &options)
-    let count = try take(count: "--count", from: &options) ?? 3
-    guard options.count == 1, let address = options.first else {
-      throw UsageError(description: "probe needs exactly one IPv4 address")
-    }
-    guard let octets = NetworkProfile.octets(address), (1..<224).contains(octets[0]) else {
-      throw UsageError(description: "\(address) is not a usable IPv4 address")
-    }
-    return .probe(address: address, interface: interface, count: count, json: json)
-  }
-
-  private static func profile(_ arguments: [String], json: Bool) throws(UsageError)
-    -> HeadlessCommand
-  {
-    var options = Array(arguments.dropFirst())
-    switch arguments.first {
-    case "list":
-      try requireEmpty(options)
-      return .listProfiles(json: json)
-    case "remove":
-      guard options.count == 1, let ssid = options.first else {
-        throw UsageError(description: "profile remove needs exactly one network name")
-      }
-      return .removeProfile(ssid: ssid)
-    case "set":
-      let update = try ProfileUpdate(parsing: &options)
-      try requireEmpty(options)
-      return .setProfile(update)
-    default:
-      throw UsageError(description: "profile needs list, set or remove")
-    }
-  }
-
-  private static func history(_ arguments: [String], json: Bool) throws(UsageError)
-    -> HeadlessCommand
-  {
-    var options = arguments
-    if options.first == "clear" {
-      try requireEmpty(Array(options.dropFirst()))
-      return .clearHistory
-    }
-    let hours = try take(count: "--hours", from: &options) ?? 24
-    guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
-    try requireEmpty(options)
-    return .history(hours: hours, json: json)
-  }
-
-  private static func export(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
-    var options = arguments
-    let redact = take(flag: "--redact", from: &options)
-    let directory = try take(value: "--dir", from: &options)
-    let days = try take(count: "--days", from: &options) ?? 7
-    guard days <= 7 else { throw UsageError(description: "--days must be at most 7") }
-    try requireEmpty(options)
-    return .export(days: days, directory: directory, redact: redact)
-  }
-
-  private static func openAtLogin(_ arguments: [String]) throws(UsageError) -> HeadlessCommand {
-    switch arguments {
-    case []: return .openAtLogin(nil)
-    case ["on"]: return .openAtLogin(.enabled)
-    case ["off"]: return .openAtLogin(.disabled)
-    default: throw UsageError(description: "open-at-login takes on, off or nothing")
-    }
-  }
-
-  private static func diagnose(_ arguments: [String], json: Bool) throws(UsageError)
-    -> HeadlessCommand
-  {
-    var options = arguments
-    let hours = try take(count: "--hours", from: &options) ?? 24
-    guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
-    try requireEmpty(options)
-    return .diagnose(hours: hours, json: json)
-  }
-
-  private static func incidents(_ arguments: [String], json: Bool) throws(UsageError)
-    -> HeadlessCommand
-  {
-    var options = arguments
-    let days = try take(count: "--days", from: &options) ?? 7
-    guard days <= 7 else { throw UsageError(description: "--days must be at most 7") }
-    try requireEmpty(options)
-    return .incidents(days: days, json: json)
-  }
-
-  private static func requireEmpty(_ options: [String]) throws(UsageError) {
+  static func requireEmpty(_ options: [String]) throws(UsageError) {
     guard options.isEmpty else {
       throw UsageError(description: "unexpected arguments: \(options.joined(separator: " "))")
     }
   }
 
-  private static func take(flag: String, from options: inout [String]) -> Bool {
+  static func take(flag: String, from options: inout [String]) -> Bool {
     guard let index = options.firstIndex(of: flag) else { return false }
     options.remove(at: index)
     return true
@@ -252,7 +171,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     return value
   }
 
-  private static func take(count name: String, from options: inout [String]) throws(UsageError)
+  static func take(count name: String, from options: inout [String]) throws(UsageError)
     -> Int?
   {
     guard let text = try take(value: name, from: &options) else { return nil }
