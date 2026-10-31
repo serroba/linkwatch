@@ -30,6 +30,10 @@ The automated loopback test alone does not establish real-network correctness.
 - Verify settings, cancellation and UI with a wider set of devices and VPNs.
 - Choose a stable signing identity and sign with Developer ID and hardened runtime.
 - Notarise and staple the distributable; verify Gatekeeper on a clean Mac.
-- Provide versioned release packaging, an app icon, installation/removal instructions
-  and a documented update process. No updater or launch-at-login service exists yet.
+- Versioned releases, a checksum-verifying installer, and install, update and
+  removal instructions exist ([installing](install.md)). Still missing: an app icon,
+  an update notice or Homebrew cask, and start at login.
+- Test the installer on a clean Mac: first-run permissions, updating while the app
+  runs, and whether permissions survive the update (they do only with a stable
+  signing identity).
 - Recheck privacy descriptions, accessibility and the MIT licensing of bundled code.
