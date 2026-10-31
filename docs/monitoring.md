@@ -19,6 +19,18 @@ Recovery requires a difference below 10 ms and both medians below 20 ms for six
 seconds. Values on recovery boundaries retain the current alert. These defaults
 are configurable observations, not proof of a particular faulty component.
 
+## Internet reference points
+
+When a profile enables them (the default, including for profiles saved before the
+setting existed), each cycle also sends one ICMP echo to Cloudflare `1.1.1.1` and
+Google `8.8.8.8`, bound to the Wi-Fi interface and concurrent with the AP and router
+probes, so the cycle does not lengthen. A pair's internet outcome is the fastest
+reference reply; it is lost only when every reference is, so one provider's hiccup is
+not attributed to the connection. Medians use the last five pairs that probed
+references, and each reference's own median is reported too. These probes leave the
+local network and disclose the public address to both providers. They do not affect
+the AP and router alert rules; the planned verdict uses them.
+
 ## Week history
 
 Each accepted pair is also aggregated into a wall-clock minute summary per network:

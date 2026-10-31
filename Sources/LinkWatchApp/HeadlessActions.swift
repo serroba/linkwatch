@@ -120,7 +120,8 @@ extension Headless {
           "\(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router) · alert above "
             + "\(thresholds.difference) ms difference or \(thresholds.slow) ms both, after "
             + "\(thresholds.sustainedSeconds) s; recover below \(thresholds.recoveryDifference) ms"
-            + " / \(thresholds.recoverySlow) ms for \(thresholds.recoverySeconds) s\n")
+            + " / \(thresholds.recoverySlow) ms for \(thresholds.recoverySeconds) s; internet "
+            + (profile.internetReferences ? "on" : "off") + "\n")
       }
     }
     return 0
@@ -215,7 +216,8 @@ enum HistoryTable {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd HH:00"
     var lines = [
-      "Hour              Samples  AP median/p95  loss   Router median/p95  loss   Alert minutes"
+      "Hour              Samples  AP median/p95  loss   Router median/p95  loss   "
+        + "Internet median/p95  loss   Alert minutes"
     ]
     for (hour, group) in hours.sorted(by: { $0.key < $1.key }) {
       let samples = group.reduce(0) { $0 + $1.samples }
@@ -223,10 +225,16 @@ enum HistoryTable {
       lines.append(
         formatter.string(from: hour) + "  " + pad(String(samples), 7) + "  "
           + target(group.map(\.accessPoint), samples: group.map(\.samples)) + "  "
-          + target(group.map(\.router), samples: group.map(\.samples)) + "     "
-          + "\(alerts)/\(group.count)")
+          + target(group.map(\.router), samples: group.map(\.samples)) + "  "
+          + internet(group) + "     " + "\(alerts)/\(group.count)")
     }
     return lines.joined(separator: "\n") + "\n"
+  }
+
+  private static func internet(_ minutes: [MinuteSummary]) -> String {
+    let probed = minutes.filter { $0.internet != nil }
+    guard !probed.isEmpty else { return pad("not probed", 21) }
+    return target(probed.compactMap(\.internet), samples: probed.map(\.samples))
   }
 
   /// Median of minute medians, worst minute p95, and sample-weighted loss.

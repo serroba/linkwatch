@@ -12,15 +12,41 @@ public enum ProbeOutcome: Equatable, Sendable {
   }
 }
 
+/// A public host used as a reference point beyond the router.
+struct InternetReference: Equatable, Sendable {
+  let name: String
+  let address: String
+
+  /// Two independent providers, so one provider's hiccup is not mistaken for the internet.
+  static let all = [
+    InternetReference(name: "Cloudflare", address: "1.1.1.1"),
+    InternetReference(name: "Google", address: "8.8.8.8"),
+  ]
+}
+
 public struct ProbePair: Equatable, Sendable {
   public let elapsed: TimeInterval
   public let accessPoint: ProbeOutcome
   public let router: ProbeOutcome
+  /// Outcomes for `InternetReference.all`, or empty when the profile does not probe them.
+  public let internet: [ProbeOutcome]
 
-  public init(elapsed: TimeInterval, accessPoint: ProbeOutcome, router: ProbeOutcome) {
+  public init(
+    elapsed: TimeInterval, accessPoint: ProbeOutcome, router: ProbeOutcome,
+    internet: [ProbeOutcome] = []
+  ) {
     self.elapsed = elapsed
     self.accessPoint = accessPoint
     self.router = router
+    self.internet = internet
+  }
+
+  /// The fastest reply from any reference, so the internet counts as slow or lost only when
+  /// every reference is; nil when no reference was probed.
+  public var internetBest: ProbeOutcome? {
+    guard !internet.isEmpty else { return nil }
+    if let fastest = internet.compactMap(\.latency).min() { return .success(milliseconds: fastest) }
+    return internet.contains(.cancelled) ? .cancelled : .timeout
   }
 }
 
@@ -75,6 +101,23 @@ public struct MonitoringWindow: Sendable {
   public var accessPointLoss: Double { loss(samples.map(\.accessPoint)) }
   public var routerLoss: Double { loss(samples.map(\.router)) }
 
+  /// Median of the best internet reference over the last five pairs that probed one.
+  public var internetMedian: Double? { median(samples.suffix(5).compactMap(\.internetBest)) }
+
+  /// Loss of the best internet reference, or nil when no reference was probed.
+  public var internetLoss: Double? {
+    let outcomes = samples.compactMap(\.internetBest)
+    return outcomes.isEmpty ? nil : loss(outcomes)
+  }
+
+  /// Median of one reference, by its index in `InternetReference.all`.
+  public func referenceMedian(_ index: Int) -> Double? {
+    median(
+      samples.suffix(5).compactMap {
+        $0.internet.indices.contains(index) ? $0.internet[index] : nil
+      })
+  }
+
   public mutating func append(_ pair: ProbePair) {
     guard accepts(pair) else { return }
     if let previous = samples.last, pair.elapsed - previous.elapsed > 5 { clearPending() }
@@ -93,6 +136,7 @@ public struct MonitoringWindow: Sendable {
   private func accepts(_ pair: ProbePair) -> Bool {
     pair.elapsed.isFinite && pair.elapsed >= 0
       && pair.accessPoint != .cancelled && pair.router != .cancelled
+      && !pair.internet.contains(.cancelled)
       && (samples.last.map { pair.elapsed > $0.elapsed } ?? true)
   }
 

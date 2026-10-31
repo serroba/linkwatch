@@ -6,16 +6,19 @@ public struct NetworkProfile: Codable, Equatable, Identifiable, Sendable {
   public var accessPoint: String
   public var router: String
   public var thresholds: Thresholds
+  /// Whether to also probe `InternetReference.all`, which sends traffic beyond the router.
+  public var internetReferences: Bool
 
   public init(
     id: UUID = UUID(), ssid: String, accessPoint: String, router: String,
-    thresholds: Thresholds = Thresholds()
+    thresholds: Thresholds = Thresholds(), internetReferences: Bool = true
   ) {
     self.id = id
     self.ssid = ssid
     self.accessPoint = accessPoint
     self.router = router
     self.thresholds = thresholds
+    self.internetReferences = internetReferences
   }
 
   public var isValid: Bool {
@@ -86,5 +89,20 @@ public struct MonitoringSession: Sendable {
   public mutating func accept(_ pair: ProbePair, generation: UUID) {
     guard profile != nil, generation == self.generation else { return }
     window.append(pair)
+  }
+}
+
+extension NetworkProfile {
+  /// Profiles saved before internet references existed decode with them enabled.
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.init(
+      id: try container.decode(UUID.self, forKey: .id),
+      ssid: try container.decode(String.self, forKey: .ssid),
+      accessPoint: try container.decode(String.self, forKey: .accessPoint),
+      router: try container.decode(String.self, forKey: .router),
+      thresholds: try container.decode(Thresholds.self, forKey: .thresholds),
+      internetReferences: try container.decodeIfPresent(Bool.self, forKey: .internetReferences)
+        ?? true)
   }
 }

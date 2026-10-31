@@ -99,6 +99,10 @@ private struct DetailView: View {
         metric("Configured AP", value: monitor.accessPointLatency)
         Spacer()
         metric("Router", value: monitor.routerLatency)
+        if monitor.session.profile?.internetReferences == true {
+          Spacer()
+          metric("Internet", value: monitor.session.window.internetMedian)
+        }
       }
       if let accessPoint = monitor.accessPointLatency, let router = monitor.routerLatency {
         Text(String(format: "Router − AP: %+.1f ms", router - accessPoint)).monospacedDigit()
@@ -283,6 +287,15 @@ private struct ProfileSettings: View {
           "Use current Wi-Fi fills the router assigned to the Wi-Fi service, and the AP when the Mac's existing ARP cache identifies it. Find AP in the menu bar panel can search the subnet once on request."
         )
         .font(.caption)
+      }
+      Section("Internet reference points") {
+        Toggle(
+          "Also ping Cloudflare (1.1.1.1) and Google (8.8.8.8)",
+          isOn: $editor.draft.internetReferences)
+        Text(
+          "Separates home problems from internet provider ones. These pings leave your network and show your public address to Cloudflare and Google."
+        )
+        .font(.caption).foregroundStyle(.secondary)
       }
       Section("Alert thresholds") {
         TextField("Difference (ms)", value: $editor.draft.thresholds.difference, format: .number)

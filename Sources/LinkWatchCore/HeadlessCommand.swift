@@ -50,8 +50,10 @@ public enum HeadlessCommand: Equatable, Sendable {
       profile set --ssid NAME [--ap ADDRESS] [--router ADDRESS]
                   [--difference MS] [--recovery-difference MS] [--slow MS]
                   [--recovery-slow MS] [--sustained SECONDS] [--recovery SECONDS]
+                  [--internet on|off]
                              Create or change a profile; omitted values keep their current
-                             setting. A new profile needs --ap and --router.
+                             setting. A new profile needs --ap and --router. --internet
+                             also pings Cloudflare 1.1.1.1 and Google 8.8.8.8 (default on).
       profile remove NAME    Delete a profile; its network is no longer probed.
       history clear          Delete the stored week of history, as in Settings.
       authorize              Report Location permission, which is granted from the app's
@@ -202,6 +204,12 @@ public struct ProfileUpdate: Equatable, Sendable {
   public var recoverySlow: Double?
   public var sustainedSeconds: Double?
   public var recoverySeconds: Double?
+  public var internetReferences: Switch?
+
+  public enum Switch: Equatable, Sendable {
+    case enabled
+    case disabled
+  }
 
   init(parsing options: inout [String]) throws(HeadlessCommand.UsageError) {
     guard let ssid = try HeadlessCommand.take(value: "--ssid", from: &options) else {
@@ -216,6 +224,12 @@ public struct ProfileUpdate: Equatable, Sendable {
     recoverySlow = try Self.number("--recovery-slow", from: &options)
     sustainedSeconds = try Self.number("--sustained", from: &options)
     recoverySeconds = try Self.number("--recovery", from: &options)
+    switch try HeadlessCommand.take(value: "--internet", from: &options) {
+    case nil: internetReferences = nil
+    case "on": internetReferences = .enabled
+    case "off": internetReferences = .disabled
+    default: throw .init(description: "--internet must be on or off")
+    }
   }
 
   /// Merges the update into an existing profile, or creates one when both addresses are given.
@@ -234,6 +248,7 @@ public struct ProfileUpdate: Equatable, Sendable {
     if let recoverySlow { profile?.thresholds.recoverySlow = recoverySlow }
     if let sustainedSeconds { profile?.thresholds.sustainedSeconds = sustainedSeconds }
     if let recoverySeconds { profile?.thresholds.recoverySeconds = recoverySeconds }
+    if let internetReferences { profile?.internetReferences = internetReferences == .enabled }
     return profile
   }
 
