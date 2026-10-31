@@ -79,9 +79,12 @@ already group problem minutes and name the most likely cause.
 | `weakSignal` | The Mac's Wi-Fi signal is weak; move closer | AP slow, lossy or spiky with RSSI < −70 dBm or SNR < 20 dB |
 | `accessPoint` | Overloaded or failing AP | AP slow or lossy with a good signal (or signal unknown) |
 
-The AP is optional and follows the radio the Mac is on: minutes where AP and router
-values are identical were measured on the router's own Wi-Fi (no AP in the path, so
-bridge verdicts cannot apply). `events` show `roamed` when the Mac moved between them.
+The AP is optional. Each minute's `path` says whether the Mac was connected through
+the access point (`accessPoint`) or the router's own Wi-Fi (`router`); `null` means
+unknown or recorded before paths existed. On `router` minutes the AP was still pinged,
+across the bridge from the other side: a slow or lost AP there means devices using
+the AP were affected, not this Mac (`status.accessPointNote`). `events` show `roamed`
+when the Mac moved between radios.
 
 On a profile with `hotspot: true` the AP and router are the phone: `accessPoint`,
 `accessPointSpikes` and `weakSignal` mean the Mac-to-phone link (bring them closer or

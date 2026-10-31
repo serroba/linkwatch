@@ -15,6 +15,7 @@ enum AppControl {
     case pause
     case resume
     case dismissSuggestion
+    case detectPath
     case requestPermission
     case reportStatus
     case mark
@@ -72,6 +73,7 @@ enum AppControl {
       .pause: { _ in controller.paused = true },
       .resume: { _ in controller.paused = false },
       .dismissSuggestion: { _ in controller.dismissSuggestion() },
+      .detectPath: { _ in controller.detectPath() },
       .requestPermission: { _ in environment.requestPermission() },
       .mark: { notification in
         if let label = notification.userInfo?[labelKey] as? String { controller.mark(label) }

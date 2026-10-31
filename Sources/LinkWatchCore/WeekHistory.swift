@@ -40,6 +40,8 @@ public struct MinuteSummary: Codable, Equatable, Sendable {
   /// The most severe state seen during the minute: `healthy`, `bothSlow`, `routerSlower` or
   /// `unreachable`.
   public var worstHealth: String
+  /// The device the Mac was connected through; nil when unknown or recorded before paths.
+  public var path: ConnectionPath?
 }
 
 /// Persists minute summaries on this Mac.
@@ -65,6 +67,8 @@ public struct WeekHistory: Sendable {
   /// Bytes recorded so far in the minute in progress.
   public var currentTraffic: TrafficCounters? { traffic }
   private var signals: [WiFiSignal] = []
+  /// The latest known path in the minute in progress.
+  private var path: ConnectionPath?
 
   public init(minutes: [MinuteSummary] = []) {
     self.minutes = minutes.sorted { $0.start < $1.start }
@@ -73,7 +77,7 @@ public struct WeekHistory: Sendable {
   /// Adds a pair; returns the previous minute's summary once a new minute or network begins.
   public mutating func record(
     _ pair: ProbePair, health: Health, ssid: String, at date: Date,
-    traffic delta: TrafficCounters? = nil, signal: WiFiSignal? = nil
+    traffic delta: TrafficCounters? = nil, signal: WiFiSignal? = nil, path: ConnectionPath? = nil
   ) -> MinuteSummary? {
     let start = Self.minuteStart(date)
     let completed = start != minute || ssid != self.ssid ? flush() : nil
@@ -82,6 +86,7 @@ public struct WeekHistory: Sendable {
       self.ssid = ssid
     }
     pairs.append(pair)
+    if let path { self.path = path }
     if let signal { signals.append(signal) }
     worst = max(worst, Self.severity(health))
     if let delta {
@@ -100,6 +105,7 @@ public struct WeekHistory: Sendable {
       worst = 0
       traffic = nil
       signals = []
+      path = nil
     }
     guard let minute, !pairs.isEmpty else { return nil }
     let summary = MinuteSummary(
@@ -110,7 +116,8 @@ public struct WeekHistory: Sendable {
         ? TargetSummary(pairs.compactMap(\.internetBest)) : nil,
       received: traffic?.received, sent: traffic?.sent,
       rssi: Self.median(signals.map(\.rssi)), noise: Self.median(signals.map(\.noise)),
-      transmitRate: Self.median(signals.map(\.transmitRate)), worstHealth: Self.labels[worst])
+      transmitRate: Self.median(signals.map(\.transmitRate)), worstHealth: Self.labels[worst],
+      path: path)
     minutes.append(summary)
     return summary
   }
@@ -173,6 +180,7 @@ extension MinuteSummary {
     try container.encode(internet, forKey: .internet)
     try container.encode(received, forKey: .received)
     try container.encode(sent, forKey: .sent)
+    try container.encode(path, forKey: .path)
     try container.encode(rssi, forKey: .rssi)
     try container.encode(noise, forKey: .noise)
     try container.encode(transmitRate, forKey: .transmitRate)

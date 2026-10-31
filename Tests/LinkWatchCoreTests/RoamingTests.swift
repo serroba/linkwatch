@@ -22,17 +22,114 @@ private let house = [
   harness.environment.neighborEntries = house
   harness.environment.network = routerRadio
   harness.controller.networkChanged()
+  #expect(harness.controller.connectionPath == .router)
   #expect(harness.controller.onRouterRadio)
   #expect(harness.controller.suggestion == nil)
-  _ = await harness.cycle()
-  #expect(harness.script.requests == ["192.0.2.1@en0"])
-
-  harness.script.requests = []
-  harness.environment.network = accessPointRadio
-  harness.controller.refresh()
-  #expect(!harness.controller.onRouterRadio)
+  // The access point is still pinged, across the bridge, from the router's Wi-Fi.
   _ = await harness.cycle()
   #expect(Set(harness.script.requests) == ["192.0.2.2@en0", "192.0.2.1@en0"])
+
+  harness.environment.network = accessPointRadio
+  harness.controller.refresh()
+  #expect(harness.controller.connectionPath == .accessPoint)
+  #expect(!harness.controller.onRouterRadio)
+}
+
+@MainActor
+@Test func aSlowAccessPointOnlyInformsWhileOnTheRouterWiFi() async {
+  var profile = homeProfile
+  profile.bridgeName = "TP-Link powerline adapters"
+  let harness = Harness(profiles: [profile])
+  harness.environment.router = "192.0.2.1"
+  harness.environment.neighborEntries = house
+  harness.environment.network = routerRadio
+  harness.controller.networkChanged()
+  harness.script.outcomes = [
+    "192.0.2.1": .success(milliseconds: 5), "192.0.2.2": .success(milliseconds: 90),
+  ]
+  for _ in 0..<15 { _ = await harness.cycle() }
+  #expect(harness.controller.verdict == .allClear)
+  #expect(
+    harness.controller.accessPointNote?.hasPrefix(
+      "The access point is slow to reach through the TP-Link powerline adapters.") == true)
+  harness.script.outcomes["192.0.2.2"] = .timeout
+  for _ in 0..<60 { _ = await harness.cycle() }
+  #expect(harness.controller.verdict == .allClear)
+  #expect(
+    harness.controller.accessPointNote?.hasPrefix("The access point is not answering") == true)
+  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
+  #expect(report.path == .router)
+  #expect(report.text.contains("Path:        router's own Wi-Fi"))
+  #expect(report.text.contains("AP note:     The access point is not answering"))
+  harness.controller.flushHistory()
+  #expect(harness.history.saved.last?.path == .router)
+}
+
+@MainActor
+@Test func latencyTellsThePathWhenAddressesDoNotMatch() async {
+  let harness = Harness()
+  harness.environment.router = "192.0.2.1"
+  harness.controller.networkChanged()
+  #expect(harness.controller.connectionPath == nil)
+  harness.script.outcomes = [
+    "192.0.2.2": .success(milliseconds: 3), "192.0.2.1": .success(milliseconds: 9),
+  ]
+  for _ in 0..<5 { _ = await harness.cycle() }
+  #expect(harness.controller.connectionPath == .accessPoint)
+  let report = StatusReport(controller: harness.controller, now: harness.clock.now)
+  #expect(report.text.contains("Path:        through the access point"))
+}
+
+@Test func pathsFromLatencyNeedAClearDifference() {
+  func path(_ accessPoint: Double, _ router: Double) -> ConnectionPath? {
+    ConnectionPath(
+      profile: homeProfile, discovered: .unknown,
+      evidence: LinkEvidence(
+        accessPoint: TargetEvidence(median: accessPoint, loss: 0),
+        router: TargetEvidence(median: router, loss: 0), internet: nil))
+  }
+  #expect(path(3, 9) == .accessPoint)
+  #expect(path(15, 5) == .router)
+  #expect(path(5, 6) == nil)
+  let single = NetworkProfile(ssid: "Home", accessPoint: "", router: "192.0.2.1")
+  #expect(
+    ConnectionPath(
+      profile: single, discovered: nil,
+      evidence: LinkEvidence(
+        accessPoint: TargetEvidence(median: nil, loss: 1),
+        router: TargetEvidence(median: nil, loss: 1), internet: nil)) == .router)
+}
+
+@Test func storedMinutesOnTheRouterWiFiAreJudgedByTheRouter() {
+  var minute = MinuteSummary(
+    start: Date(timeIntervalSinceReferenceDate: 800_000_000), ssid: "Home", samples: 30,
+    accessPoint: target(90, 120, loss: 0), router: target(5, 8, loss: 0),
+    internet: target(12, 20, loss: 0), worstHealth: "healthy")
+  #expect(Verdict(LinkEvidence(minute), thresholds: Thresholds()) != .allClear)
+  minute.path = .router
+  #expect(Verdict(LinkEvidence(minute), thresholds: Thresholds()) == .allClear)
+}
+
+@MainActor
+@Test func theConnectedDeviceIsRecheckedEveryMinuteAndOnRequest() {
+  let harness = Harness()
+  harness.environment.router = "192.0.2.1"
+  harness.environment.network = accessPointRadio
+  harness.controller.networkChanged()
+  #expect(harness.controller.discovery?.accessPoint == .unknown)
+  harness.environment.neighborEntries = house
+  harness.controller.refresh()
+  #expect(harness.controller.discovery?.accessPoint == .unknown)
+  harness.clock.now += 60
+  harness.controller.refresh()
+  #expect(harness.controller.discovery?.accessPoint == .found("192.0.2.2"))
+  harness.environment.neighborEntries = []
+  harness.controller.detectPath()
+  #expect(harness.controller.discovery?.accessPoint == .unknown)
+}
+
+@Test func detectCommandParses() throws {
+  #expect(try HeadlessCommand.parse(["detect"]) == .detect)
 }
 
 @MainActor
