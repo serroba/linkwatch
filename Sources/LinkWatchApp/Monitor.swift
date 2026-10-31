@@ -105,6 +105,15 @@ final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDe
       bssidVisible: !(interface?.bssid() ?? "").isEmpty)
   }
 
+  /// The interface that owns the IPv4 default route, such as a VPN tunnel.
+  var primaryInterface: String? {
+    guard let store = SCDynamicStoreCreate(nil, "LinkWatch" as CFString, nil, nil),
+      let values = SCDynamicStoreCopyValue(store, "State:/Network/Global/IPv4" as CFString)
+        as? [String: Any]
+    else { return nil }
+    return values["PrimaryInterface"] as? String
+  }
+
   /// The Wi-Fi interface name, which macOS reveals without Location permission.
   var wifiInterfaceName: String? {
     wifi.interface()?.interfaceName

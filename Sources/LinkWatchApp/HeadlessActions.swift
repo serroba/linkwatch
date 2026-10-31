@@ -24,6 +24,7 @@ extension Headless {
     case .history(let hours, let json): return history(hours: hours, json: json)
     case .clearHistory: return clearHistory()
     case .incidents(let days, let json): return incidents(days: days, json: json)
+    case .diagnose(let hours, let json): return await diagnose(hours: hours, json: json)
     default:
       write("LinkWatch: unsupported command\n", to: .standardError)
       return 64
@@ -190,7 +191,7 @@ extension Headless {
       return 0
     }
     let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
-    write(HistoryTable.text(minutes, profiles: profiles))
+    write(HistoryRollup.table(HistoryRollup.hours(minutes, profiles: profiles)))
     return 0
   }
 
@@ -222,6 +223,35 @@ extension Headless {
     return 0
   }
 
+  /// Bundles live state, coverage, incidents and hourly history for answering
+  /// "what's going on with my network?" from evidence.
+  static func diagnose(hours: Int, json: Bool) async -> Int32 {
+    let live = await AppControl.liveStatus()
+    let status: StatusReport
+    if let live {
+      status = live
+    } else {
+      status = StatusReport(controller: await readyMonitor().controller, now: uptime)
+    }
+    let now = Date()
+    let since = now.addingTimeInterval(-Double(hours) * 3600)
+    let minutes =
+      (try? FileHistoryStore(directory: Monitor.supportDirectory).load(since: since)) ?? []
+    let profiles = (try? UserDefaultsProfileStore().load()).flatMap { $0 } ?? []
+    let report = DiagnoseReport(
+      status: status, appRunning: live != nil, minutes: minutes, profiles: profiles,
+      hours: hours, now: now, primaryInterface: SystemEnvironment().primaryInterface)
+    if json {
+      emit(encodable: report, compact: false)
+    } else {
+      let bridges = Dictionary(
+        profiles.compactMap { profile in profile.bridgeName.map { (profile.ssid, $0) } }
+      ) { first, _ in first }
+      write(report.text(bridgeNames: bridges))
+    }
+    return 0
+  }
+
   static func clearHistory() -> Int32 {
     do {
       try FileHistoryStore(directory: Monitor.supportDirectory).clear()
@@ -234,68 +264,5 @@ extension Headless {
     AppControl.post(.reloadHistory)
     write("Cleared the stored history.\n")
     return 0
-  }
-}
-
-/// Hourly rollups of minute summaries for terminal output.
-enum HistoryTable {
-  static func text(_ minutes: [MinuteSummary], profiles: [NetworkProfile]) -> String {
-    let thresholds = Dictionary(profiles.map { ($0.ssid, $0.thresholds) }) { first, _ in first }
-    let peaks = Dictionary(grouping: minutes, by: \.ssid).mapValues {
-      $0.compactMap(\.bitsPerSecond).max() ?? 0
-    }
-    let hours = Dictionary(grouping: minutes) { minute in
-      Calendar.current.dateInterval(of: .hour, for: minute.start)?.start ?? minute.start
-    }
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy-MM-dd HH:00"
-    var lines = [
-      "Hour              Samples  AP median/p95  loss   Router median/p95  loss   "
-        + "Internet median/p95  loss    ↓ MB    ↑ MB  Problem minutes"
-    ]
-    for (hour, group) in hours.sorted(by: { $0.key < $1.key }) {
-      let samples = group.reduce(0) { $0 + $1.samples }
-      let verdicts = group.map {
-        Verdict(
-          LinkEvidence($0, peakBitsPerSecond: peaks[$0.ssid] ?? 0),
-          thresholds: thresholds[$0.ssid] ?? Thresholds())
-      }
-      let problems = verdicts.filter(\.isProblem)
-      let common = Dictionary(grouping: problems) { $0 }.max { $0.value.count < $1.value.count }
-      lines.append(
-        formatter.string(from: hour) + "  " + pad(String(samples), 7) + "  "
-          + target(group.map(\.accessPoint), samples: group.map(\.samples)) + "  "
-          + target(group.map(\.router), samples: group.map(\.samples)) + "  "
-          + internet(group) + "  " + megabytes(group.compactMap(\.received)) + "  "
-          + megabytes(group.compactMap(\.sent)) + "  " + "\(problems.count)/\(group.count)"
-          + (common.map { " mostly \($0.key.rawValue)" } ?? ""))
-    }
-    return lines.joined(separator: "\n") + "\n"
-  }
-
-  private static func megabytes(_ bytes: [UInt64]) -> String {
-    guard !bytes.isEmpty else { return pad("—", 6) }
-    return pad(String(format: "%.0f", Double(bytes.reduce(0, &+)) / 1_000_000), 6)
-  }
-
-  private static func internet(_ minutes: [MinuteSummary]) -> String {
-    let probed = minutes.filter { $0.internet != nil }
-    guard !probed.isEmpty else { return pad("not probed", 21) }
-    return target(probed.compactMap(\.internet), samples: probed.map(\.samples))
-  }
-
-  /// Median of minute medians, worst minute p95, and sample-weighted loss.
-  private static func target(_ summaries: [TargetSummary], samples: [Int]) -> String {
-    let medians = summaries.compactMap(\.median).sorted()
-    let median = medians.isEmpty ? "—" : String(format: "%.1f", medians[medians.count / 2])
-    let p95 = summaries.compactMap(\.p95).max().map { String(format: "%.1f", $0) } ?? "—"
-    let total = samples.reduce(0, +)
-    let lost = zip(summaries, samples).reduce(0.0) { $0 + $1.0.loss * Double($1.1) }
-    let loss = total == 0 ? 0 : lost / Double(total) * 100
-    return pad("\(median)/\(p95) ms", 15) + "  " + pad(String(format: "%.0f%%", loss), 4)
-  }
-
-  private static func pad(_ text: String, _ width: Int) -> String {
-    text.count >= width ? text : String(repeating: " ", count: width - text.count) + text
   }
 }

@@ -210,6 +210,7 @@ enum Headless {
 
   static func emit(encodable value: some Encodable, compact: Bool) {
     let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .iso8601
     encoder.outputFormatting = compact ? [.sortedKeys] : [.sortedKeys, .prettyPrinted]
     guard let data = try? encoder.encode(value) else {
       write("LinkWatch: could not encode output\n", to: .standardError)
