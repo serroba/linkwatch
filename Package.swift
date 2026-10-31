@@ -7,10 +7,13 @@ let package = Package(
   products: [
     .library(name: "LinkWatchCore", targets: ["LinkWatchCore"]),
     .library(name: "LinkWatchNetworking", targets: ["LinkWatchNetworking"]),
+    .executable(name: "LinkWatch", targets: ["LinkWatchApp"]),
   ],
   targets: [
     .target(name: "LinkWatchCore"),
     .target(name: "LinkWatchNetworking", dependencies: ["LinkWatchCore"]),
+    .executableTarget(
+      name: "LinkWatchApp", dependencies: ["LinkWatchCore", "LinkWatchNetworking"]),
     .testTarget(name: "LinkWatchCoreTests", dependencies: ["LinkWatchCore"]),
     .testTarget(name: "LinkWatchNetworkingTests", dependencies: ["LinkWatchNetworking"]),
   ]
