@@ -29,9 +29,10 @@ if [[ "$(sw_vers -productVersion | cut -d. -f1)" -lt 14 ]]; then
 fi
 
 if [[ -z "$version" ]]; then
-  version="$(curl -fsSL "https://api.github.com/repos/$repository/releases/latest" \
-    | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1)"
-  [[ -n "$version" ]] || { echo "Could not find the latest release." >&2; exit 69; }
+  latest="$(curl -fsSL "https://api.github.com/repos/$repository/releases/latest" 2> /dev/null)" \
+    || { echo "No published LinkWatch release was found." >&2; exit 69; }
+  version="$(printf '%s' "$latest" | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1)"
+  [[ -n "$version" ]] || { echo "Could not read the latest release version." >&2; exit 69; }
 fi
 if [[ -z "$destination" ]]; then
   if [[ -w /Applications ]]; then destination="/Applications"; else destination="$HOME/Applications"; fi
@@ -42,9 +43,11 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 archive="LinkWatch-$version.zip"
 base="https://github.com/$repository/releases/download/v$version"
-echo "Downloading LinkWatch $version…"
-curl -fsSL --proto '=https' -o "$work/$archive" "$base/$archive"
-curl -fsSL --proto '=https' -o "$work/$archive.sha256" "$base/$archive.sha256"
+echo "Downloading LinkWatch ${version}..."
+for file in "$archive" "$archive.sha256"; do
+  curl -fsSL --proto '=https' -o "$work/$file" "$base/$file" 2> /dev/null \
+    || { echo "Could not download $file for version ${version}." >&2; exit 69; }
+done
 expected="$(cut -d' ' -f1 < "$work/$archive.sha256")"
 actual="$(shasum -a 256 "$work/$archive" | cut -d' ' -f1)"
 if [[ -z "$expected" || "$expected" != "$actual" ]]; then
@@ -55,7 +58,7 @@ ditto -x -k "$work/$archive" "$work/unpacked"
 [[ -d "$work/unpacked/LinkWatch.app" ]] || { echo "The archive has no LinkWatch.app." >&2; exit 1; }
 
 if pgrep -x LinkWatch > /dev/null; then
-  echo "Quitting the running LinkWatch…"
+  echo "Quitting the running LinkWatch..."
   osascript -e 'quit app "LinkWatch"' > /dev/null 2>&1 || true
   for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -x LinkWatch > /dev/null || break; sleep 0.5; done
   pkill -x LinkWatch 2> /dev/null || true
