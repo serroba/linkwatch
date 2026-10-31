@@ -1,0 +1,178 @@
+public import Foundation
+
+/// Everything needed to answer "what's going on with my network?" from evidence.
+public struct DiagnoseReport: Codable, Equatable, Sendable {
+  public struct Gap: Codable, Equatable, Sendable {
+    public var start: Date
+    public var end: Date
+  }
+
+  public var generatedAt: Date
+  public var hours: Int
+  /// Whether the menu bar app answered; otherwise `status` is a fresh local reading.
+  public var appRunning: Bool
+  public var status: StatusReport
+  /// The interface owning the default route, such as `en0`, or a VPN like `utun2`.
+  public var primaryInterface: String?
+  /// Fraction of the period with stored minutes.
+  public var coverage: Double
+  /// Unmonitored spans of at least ten minutes.
+  public var gaps: [Gap]
+  public var incidents: [Incident]
+  public var hourly: [HourSummary]
+  public var notes: [String]
+
+  public static let minimumGapMinutes = 10
+
+  public init(
+    status: StatusReport, appRunning: Bool, minutes: [MinuteSummary],
+    profiles: [NetworkProfile], hours: Int, now: Date, primaryInterface: String?
+  ) {
+    let since = now.addingTimeInterval(-Double(hours) * 3600)
+    let window = minutes.filter { $0.start >= since && $0.start <= now }
+    generatedAt = now
+    self.hours = hours
+    self.appRunning = appRunning
+    self.status = status
+    self.primaryInterface = primaryInterface
+    let recorded = Set(window.map(\.start))
+    coverage = min(1, Double(recorded.count) / (Double(hours) * 60))
+    gaps = Self.gaps(recorded: recorded, since: since, now: now)
+    incidents = IncidentTimeline.incidents(from: window, profiles: profiles)
+    hourly = HistoryRollup.hours(window, profiles: profiles)
+    notes = []
+    notes = Self.notes(for: self, profiles: profiles)
+  }
+
+  private static func gaps(recorded: Set<Date>, since: Date, now: Date) -> [Gap] {
+    let first = (since.timeIntervalSinceReferenceDate / 60).rounded(.up) * 60
+    var gaps: [Gap] = []
+    var gapStart: Date?
+    var minute = Date(timeIntervalSinceReferenceDate: first)
+    while minute.addingTimeInterval(60) <= now {
+      if recorded.contains(minute) {
+        if let start = gapStart { gaps.append(Gap(start: start, end: minute)) }
+        gapStart = nil
+      } else if gapStart == nil {
+        gapStart = minute
+      }
+      minute.addTimeInterval(60)
+    }
+    if let gapStart { gaps.append(Gap(start: gapStart, end: minute)) }
+    return gaps.filter { $0.end.timeIntervalSince($0.start) >= Double(minimumGapMinutes) * 60 }
+  }
+
+  private static func notes(for report: DiagnoseReport, profiles: [NetworkProfile]) -> [String] {
+    var notes: [String] = []
+    let status = report.status
+    if !report.appRunning {
+      notes.append(
+        "The menu bar app is not running, so nothing is being recorded; the live section is a fresh local reading."
+      )
+    }
+    if profiles.isEmpty { notes.append("No network is set up for monitoring yet.") }
+    if !status.permitted {
+      notes.append(
+        "Location permission is missing, so the Wi-Fi network cannot be identified or monitored.")
+    } else if status.network == nil {
+      notes.append("Wi-Fi is off or not connected, so nothing is monitored right now.")
+    }
+    if status.verdict == .routerSilent {
+      notes.append(
+        "The router ignores LinkWatch while the internet works: check Local Network permission.")
+    }
+    if let primary = report.primaryInterface, primary != status.network?.interface,
+      status.network != nil
+    {
+      notes.append(
+        "\(primary) carries the default route (often a VPN); LinkWatch still measures over Wi-Fi.")
+    }
+    if !report.gaps.isEmpty {
+      notes.append(
+        "\(report.gaps.count) unmonitored period\(report.gaps.count == 1 ? "" : "s"): the Mac was asleep, paused, away from a monitored network or LinkWatch was not running. No conclusions can be drawn for those times."
+      )
+    }
+    if report.incidents.isEmpty && report.coverage > 0 {
+      notes.append("No problems lasting two minutes or more were recorded while monitoring.")
+    }
+    return notes
+  }
+}
+
+extension DiagnoseReport {
+  /// A readable report that leads with the answer and keeps the evidence below it.
+  public func text(bridgeNames: [String: String]) -> String {
+    let time = DateFormatter()
+    time.setLocalizedDateFormatFromTemplate("EEE d MMM HH:mm")
+    var lines = [
+      "LinkWatch diagnosis for the last \(hours) h (generated \(time.string(from: generatedAt)))",
+      "",
+      "Now",
+    ]
+    lines += status.text.split(separator: "\n").map { "  " + $0 }
+    lines.append("")
+    lines.append(
+      String(
+        format: "Coverage: %.0f%% of the period monitored", coverage * 100)
+        + (gaps.isEmpty ? "" : "; gaps:"))
+    for gap in gaps {
+      let minutes = Int(gap.end.timeIntervalSince(gap.start) / 60)
+      lines.append("  \(time.string(from: gap.start)) for \(minutes) min")
+    }
+    lines.append("")
+    lines.append("Incidents: \(incidents.count)")
+    for incident in incidents.reversed() {
+      let bridge = bridgeNames[incident.ssid]
+      lines.append("  " + incident.summary(bridge: bridge))
+      lines.append("    " + incident.evidence)
+      lines.append("    → " + (incident.verdict.action(bridge: bridge) ?? "No action needed."))
+    }
+    if !hourly.isEmpty {
+      lines.append("")
+      lines.append("Hourly")
+      lines += HistoryRollup.table(hourly).split(separator: "\n").map { "  " + $0 }
+    }
+    if !notes.isEmpty {
+      lines.append("")
+      lines.append("Notes")
+      lines += notes.map { "  - " + $0 }
+    }
+    return lines.joined(separator: "\n") + "\n"
+  }
+}
+
+extension HistoryRollup {
+  /// A fixed-width table of hourly rollups for terminals.
+  public static func table(_ hours: [HourSummary]) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd HH:00"
+    var lines = [
+      "Hour              Mins  AP median/p95  loss   Router median/p95  loss   "
+        + "Internet median/p95  loss    ↓ MB    ↑ MB  Problem minutes"
+    ]
+    for hour in hours {
+      var line = formatter.string(from: hour.start) + "  " + pad(String(hour.minutesRecorded), 4)
+      line += "  " + link(hour.accessPoint) + "  " + link(hour.router) + "  "
+      line += hour.internet.map(link) ?? pad("not probed", 21)
+      line += "  " + megabytes(hour.received) + "  " + megabytes(hour.sent)
+      line += "  \(hour.problemMinutes)/\(hour.minutesRecorded)"
+      if let common = hour.commonProblem { line += " mostly \(common.rawValue)" }
+      lines.append(line)
+    }
+    return lines.joined(separator: "\n") + "\n"
+  }
+
+  private static func link(_ link: HourLink) -> String {
+    let median = link.median.map { String(format: "%.1f", $0) } ?? "—"
+    let p95 = link.p95.map { String(format: "%.1f", $0) } ?? "—"
+    return pad("\(median)/\(p95) ms", 15) + "  " + pad(String(format: "%.0f%%", link.loss * 100), 4)
+  }
+
+  private static func megabytes(_ bytes: UInt64?) -> String {
+    pad(bytes.map { String(format: "%.0f", Double($0) / 1_000_000) } ?? "—", 6)
+  }
+
+  private static func pad(_ text: String, _ width: Int) -> String {
+    text.count >= width ? text : String(repeating: " ", count: width - text.count) + text
+  }
+}

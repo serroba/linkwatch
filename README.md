@@ -144,7 +144,7 @@ Planned work, in order:
    start, end, the failing link and the verdict, for example "yesterday 19:40–20:05:
    the link between the AP and the router failed (router 100% loss, AP and internet
    fine)". Shown in the app and by `scripts/linkwatch incidents --days 7`.
-4. **Ask an agent "what's going on with my network?"** A `diagnose` command bundles
+4. **Ask an agent "what's going on with my network?"** (*implemented*). A `diagnose` command bundles
    everything needed to answer from evidence: current status and verdict,
    permissions, recent incidents with per-link evidence, hourly summaries, profile
    setup and **coverage** (which periods were actually monitored, so "no incidents"
@@ -215,6 +215,8 @@ shows, and every action it offers, is available as text or JSON for scripts and
 coding agents (`scripts/linkwatch help` lists all options):
 
 ```sh
+scripts/linkwatch diagnose --hours 24  # the answer first: verdict, coverage and gaps,
+                                       # incidents with evidence, hourly history, notes
 scripts/linkwatch status [--json]   # live state of the running app: latency, loss, alert,
                                     # Wi-Fi facts, discovery, suggestion, profiles
 scripts/linkwatch watch --cycles 5  # follow the running app every 2 s (JSON Lines with --json)
@@ -231,6 +233,12 @@ scripts/linkwatch neighbors         # cached ARP neighbours and the BSSID match
 scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test
 scripts/linkwatch authorize         # ask the running app to request Location permission
 ```
+
+In this repository, coding agents such as Claude Code can answer "what's going on
+with my network?" directly: the project skill in
+[`.claude/skills/diagnose-network`](.claude/skills/diagnose-network/SKILL.md) tells
+them to run `diagnose`, check coverage and permissions before concluding, explain
+the verdict with the evidence, and keep addresses out of public places.
 
 `status` and `watch` read the running app's live state; with `--local`, or when the
 app is not running, they build a fresh view and `watch` monitors headlessly. Profile

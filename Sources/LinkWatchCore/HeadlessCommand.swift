@@ -15,6 +15,7 @@ public enum HeadlessCommand: Equatable, Sendable {
   case removeProfile(ssid: String)
   case history(hours: Int, json: Bool)
   case incidents(days: Int, json: Bool)
+  case diagnose(hours: Int, json: Bool)
   case clearHistory
   case help
 
@@ -26,6 +27,9 @@ public enum HeadlessCommand: Equatable, Sendable {
     Usage: LinkWatch <command> [options]
 
     Inspect:
+      diagnose [--hours N]   Answer "what's going on with my network?": the live verdict,
+                             coverage and gaps, incidents with evidence, hourly history and
+                             notes for the last N hours (default 24, up to 168).
       status [--local]       Show everything the menu bar panel shows. Reads the running app's
                              live state; --local builds a fresh view instead. Sends no probes.
       watch [--cycles N] [--local]
@@ -83,6 +87,7 @@ public enum HeadlessCommand: Equatable, Sendable {
     case "profile": return try profile(options, json: json)
     case "history": return try history(options, json: json)
     case "incidents": return try incidents(options, json: json)
+    case "diagnose": return try diagnose(options, json: json)
     default:
       let local = take(flag: "--local", from: &options)
       guard let simple = simple(name, json: json, local: local) else { return nil }
@@ -162,6 +167,16 @@ public enum HeadlessCommand: Equatable, Sendable {
     guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
     try requireEmpty(options)
     return .history(hours: hours, json: json)
+  }
+
+  private static func diagnose(_ arguments: [String], json: Bool) throws(UsageError)
+    -> HeadlessCommand
+  {
+    var options = arguments
+    let hours = try take(count: "--hours", from: &options) ?? 24
+    guard hours <= 168 else { throw UsageError(description: "--hours must be at most 168") }
+    try requireEmpty(options)
+    return .diagnose(hours: hours, json: json)
   }
 
   private static func incidents(_ arguments: [String], json: Bool) throws(UsageError)
