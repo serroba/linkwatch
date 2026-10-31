@@ -273,7 +273,7 @@ private struct ProfileSettings: View {
         TextField("Configured AP IPv4 address", text: $editor.draft.accessPoint)
         TextField("Router IPv4 address", text: $editor.draft.router)
         Text(
-          "Use current Wi-Fi fills the router when Wi-Fi owns the default route, and the AP when the Mac's existing ARP cache identifies it. LinkWatch never scans the network."
+          "Use current Wi-Fi fills the router assigned to the Wi-Fi service, and the AP when the Mac's existing ARP cache identifies it. LinkWatch never scans the network."
         )
         .font(.caption)
       }

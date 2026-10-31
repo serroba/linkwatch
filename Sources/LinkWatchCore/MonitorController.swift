@@ -32,7 +32,7 @@ public protocol NetworkEnvironment: AnyObject {
   var isPermitted: Bool { get }
   var wifiState: WiFiState { get }
   func currentNetwork() -> NetworkIdentity?
-  /// The IPv4 router, only when this interface owns the default route.
+  /// The IPv4 router assigned to this interface's network service, or nil when ambiguous.
   func defaultRouter(for interface: String) -> String?
   /// Existing ARP cache entries; implementations must not send traffic to populate it.
   func neighbors() -> [NeighborEntry]

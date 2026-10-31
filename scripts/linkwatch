@@ -1,10 +1,32 @@
 #!/usr/bin/env bash
-# Run LinkWatch headless commands through the app bundle so they share its
-# identity, Location permission and saved profiles. Build first with build_app.sh.
+# Run LinkWatch headless commands through the app bundle. Launching via LaunchServices
+# makes LinkWatch, not the terminal, the process responsible for Location access, so
+# macOS reveals the Wi-Fi name; output streams back through private named pipes.
 set -euo pipefail
-executable="$(cd "$(dirname "$0")/.." && pwd)/dist/LinkWatch.app/Contents/MacOS/LinkWatch"
-if [[ ! -x "$executable" ]]; then
-  echo "LinkWatch: $executable not found; run scripts/build_app.sh first" >&2
+app="$(cd "$(dirname "$0")/.." && pwd)/dist/LinkWatch.app"
+if [[ ! -x "$app/Contents/MacOS/LinkWatch" ]]; then
+  echo "LinkWatch: $app not found; run scripts/build_app.sh first" >&2
   exit 69
 fi
-exec "$executable" "${@:-help}"
+run_dir="$(mktemp -d)"
+cleanup() {
+  if [[ -f "$run_dir/pid" && ! -f "$run_dir/status" ]]; then
+    kill "$(cat "$run_dir/pid")" 2>/dev/null || true
+  fi
+  rm -rf "$run_dir"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+mkfifo "$run_dir/out" "$run_dir/err"
+cat "$run_dir/out" &
+out_reader=$!
+cat "$run_dir/err" >&2 &
+err_reader=$!
+if ! open -n -g --stdout "$run_dir/out" --stderr "$run_dir/err" \
+  --env "LINKWATCH_RUN_DIR=$run_dir" "$app" --args "${@:-help}"; then
+  kill "$out_reader" "$err_reader" 2>/dev/null || true
+  echo "LinkWatch: could not launch $app" >&2
+  exit 69
+fi
+wait "$out_reader" "$err_reader"
+exit "$(cat "$run_dir/status" 2>/dev/null || echo 70)"

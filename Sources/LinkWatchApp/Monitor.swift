@@ -136,13 +136,22 @@ final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDe
     NeighborTable.entries()
   }
 
+  /// Returns the IPv4 router assigned to the network service on this interface.
+  ///
+  /// This works while another interface, such as a VPN, owns the default route; probes stay
+  /// bound to Wi-Fi.
   func defaultRouter(for interface: String) -> String? {
     guard let store = SCDynamicStoreCreate(nil, "LinkWatch" as CFString, nil, nil),
-      let values = SCDynamicStoreCopyValue(store, "State:/Network/Global/IPv4" as CFString)
-        as? [String: Any],
-      values["PrimaryInterface"] as? String == interface
+      let keys = SCDynamicStoreCopyKeyList(store, "State:/Network/Service/[^/]+/IPv4" as CFString)
+        as? [String]
     else { return nil }
-    return values["Router"] as? String
+    let routers = keys.compactMap { key -> String? in
+      guard let values = SCDynamicStoreCopyValue(store, key as CFString) as? [String: Any],
+        values["InterfaceName"] as? String == interface
+      else { return nil }
+      return values["Router"] as? String
+    }
+    return Set(routers).count == 1 ? routers.first : nil
   }
 }
 

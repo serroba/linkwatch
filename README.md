@@ -31,7 +31,8 @@ router address for each. Other networks generate no probes. Missing permission,
 disconnection and manual pause also stop monitoring.
 
 When the Mac joins a Wi-Fi network without a profile, LinkWatch suggests one. It
-reads the default router (only when Wi-Fi owns the default route) and the Mac's
+reads the router assigned to the Wi-Fi service (even when a VPN owns the default
+route) and the Mac's
 existing ARP cache, and proposes an AP only when exactly one cached neighbour on
 the Wi-Fi interface matches the associated BSSID. It never scans the subnet or
 sends traffic to find the AP; if the AP is not cached, or is the router itself, you
@@ -89,13 +90,16 @@ open dist/LinkWatch.app
 Open **Settings** from the menu bar panel, allow Wi-Fi identification, and select
 **Use current Wi-Fi** or enter the exact network name. Enter distinct AP and router
 IPv4 addresses, adjust thresholds if needed, and explicitly save the profile to
-allow monitoring. A router address is suggested only when Wi-Fi owns the default
-route. No profile or network addresses are preconfigured.
+allow monitoring. The router suggested is the one assigned to the Wi-Fi service,
+so it stays correct while a VPN owns the default route. No profile or network
+addresses are preconfigured.
 
 macOS may also request Local Network access when the first probe is sent. If
 access is denied, measurements fail visibly; review Location and Local Network
 permissions in System Settings. The app never requests location coordinates.
-Rebuilding the ad-hoc-signed prototype may affect remembered permissions.
+macOS ties the Location grant to the code signature. An ad-hoc signature changes
+with every build, so `build_app.sh` signs with a local "LinkWatch Local Development"
+code-signing identity when one exists; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The bundle is for local development, not notarised public distribution. See the
 [verification checklist](docs/verification.md) for remaining manual checks.
@@ -114,8 +118,11 @@ scripts/linkwatch probe 127.0.0.1 --interface lo0  # raw ICMP self-test
 scripts/linkwatch authorize         # request Location permission from the terminal
 ```
 
-Commands run through the app bundle, so they share its Location permission and
-saved profiles. `status`, `neighbors` and `authorize` send no traffic, and `watch`
+Commands launch the app bundle through LaunchServices, so macOS treats LinkWatch,
+not the terminal, as responsible for Location access and reveals the Wi-Fi name;
+output streams back and the exit code is preserved. Run directly from a shell, the
+executable sees the SSID and BSSID redacted. Grant Location from the app's Settings
+window; macOS does not prompt from the command line. `status`, `neighbors` and `authorize` send no traffic, and `watch`
 probes only networks with a saved profile, like the app. Output contains local
 network addresses; review it before sharing.
 

@@ -15,7 +15,7 @@ enum Entry {
       }
     } catch {
       Headless.write("LinkWatch: \(error)\n\n\(HeadlessCommand.usage)\n", to: .standardError)
-      exit(64)
+      Headless.finish(64)
     }
     LinkWatchApp.main()
   }
@@ -25,7 +25,8 @@ enum Entry {
 @MainActor
 enum Headless {
   static func start(_ command: HeadlessCommand) -> Never {
-    Task { @MainActor in exit(await run(command)) }
+    record("pid", String(getpid()))
+    Task { @MainActor in finish(await run(command)) }
     guard command == .authorize else { dispatchMain() }
     // CoreLocation only presents its prompt for a running application.
     let application = NSApplication.shared
@@ -33,6 +34,19 @@ enum Headless {
     application.activate(ignoringOtherApps: true)
     application.run()
     exit(0)
+  }
+
+  /// Exits, first recording the status for `scripts/linkwatch`, which launches through
+  /// LaunchServices and so cannot read the exit code directly.
+  nonisolated static func finish(_ status: Int32) -> Never {
+    record("status", String(status))
+    exit(status)
+  }
+
+  /// Writes a value into the wrapper's private run directory when one is provided.
+  nonisolated private static func record(_ name: String, _ value: String) {
+    guard let directory = ProcessInfo.processInfo.environment["LINKWATCH_RUN_DIR"] else { return }
+    try? Data(value.utf8).write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
   }
 
   nonisolated static func write(_ text: String, to handle: FileHandle = .standardOutput) {
@@ -44,18 +58,29 @@ enum Headless {
     case .help:
       write(HeadlessCommand.usage + "\n")
     case .status(let json):
-      let monitor = Monitor()
+      let monitor = await readyMonitor()
       emit(StatusReport(controller: monitor.controller, now: uptime), json: json)
     case .watch(let cycles, let json):
       await watch(cycles: cycles, json: json)
     case .probe(let address, let interface, let count, let json):
       return await probe(address: address, interface: interface, count: count, json: json)
     case .neighbors(let json):
-      emit(neighbors(), json: json)
+      emit(await neighbors(), json: json)
     case .authorize:
       return await authorize()
     }
     return 0
+  }
+
+  /// CoreLocation reports "not determined" until locationd answers, so wait up to a second
+  /// for a decision before reading the Wi-Fi identity.
+  private static func readyMonitor() async -> Monitor {
+    let monitor = Monitor()
+    for _ in 0..<20 where monitor.environment.authorizationDescription == "not determined" {
+      try? await Task.sleep(for: .milliseconds(50))
+    }
+    monitor.controller.networkChanged()
+    return monitor
   }
 
   private static var uptime: TimeInterval { ProcessInfo.processInfo.systemUptime }
@@ -89,7 +114,7 @@ enum Headless {
   }
 
   private static func watch(cycles: Int?, json: Bool) async {
-    let monitor = Monitor()
+    let monitor = await readyMonitor()
     var completed = 0
     while cycles.map({ completed < $0 }) ?? true {
       let delay = await monitor.controller.cycle()
@@ -144,8 +169,8 @@ enum Headless {
     return report.received == 0 ? 1 : 0
   }
 
-  private static func neighbors() -> NeighborReport {
-    let monitor = Monitor()
+  private static func neighbors() async -> NeighborReport {
+    let monitor = await readyMonitor()
     let network = monitor.controller.network
     let interface = network?.interface ?? monitor.environment.wifiInterfaceName
     let entries = NeighborTable.entries().filter { $0.interface == interface }

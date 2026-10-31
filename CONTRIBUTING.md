@@ -60,3 +60,20 @@ and applicable Swift results. Check the latest PR commit and all pipeline jobs
 before merging. Routine tests are authorised; reuse approved commands instead of
 requesting repeated permission. Actual execution-policy blocks must be reported
 accurately, without treating sandbox network failures as invalid credentials.
+
+## Local signing
+
+macOS ties privacy grants such as Location to the code signature. To keep them
+across rebuilds, create a local code-signing identity named
+`LinkWatch Local Development` in the login keychain (a self-signed certificate with
+the code-signing extended key usage), then allow `codesign` to use its key without a
+dialog by running this once in Terminal.app, which asks for the login password:
+
+```sh
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -t private \
+  -D "LinkWatch Local Development" ~/Library/Keychains/login.keychain-db
+```
+
+`scripts/build_app.sh` uses that identity, or `LINKWATCH_SIGN_IDENTITY`, and falls
+back to ad-hoc signing, as in CI. The identity is not trusted by other Macs and is
+not a distribution signature.
