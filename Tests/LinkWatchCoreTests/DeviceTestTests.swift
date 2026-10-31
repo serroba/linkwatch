@@ -112,3 +112,30 @@ private func result(baseline: [ProbePair], active: [ProbePair], off: [ProbePair]
     try HeadlessCommand.parse(["test-device", "standing", "desk"]) == .testDevice("standing desk"))
   #expect(throws: HeadlessCommand.UsageError.self) { try HeadlessCommand.parse(["test-device"]) }
 }
+
+@Test func deviceTestInstructionsAndIncompleteResults() {
+  #expect(
+    DeviceTestPhase.baseline.instruction(device: "desk")
+      == "Leave the desk off and use the Mac as usual.")
+  #expect(DeviceTestPhase.deviceOff.instruction(device: "desk") == "Turn the desk off now.")
+  #expect(DeviceTestResult(device: "desk", phases: []).conclusion == "The test did not complete.")
+}
+
+@MainActor
+@Test func deviceTestReportsEachStateForStatus() async throws {
+  let harness = Harness()
+  #expect(DeviceTestReport(controller: harness.controller, now: harness.clock.now) == nil)
+  _ = await harness.cycle()
+  #expect(harness.controller.startDeviceTest("heater"))
+  let running = try #require(
+    DeviceTestReport(controller: harness.controller, now: harness.clock.now))
+  #expect(running.state == "running")
+  #expect(running.summary.hasPrefix("heater, baseline phase, "))
+  let json = String(bytes: try JSONEncoder().encode(running), encoding: .utf8) ?? ""
+  #expect(json.contains("\"result\":null"))
+  harness.controller.paused = true
+  let cancelled = try #require(
+    DeviceTestReport(controller: harness.controller, now: harness.clock.now))
+  #expect(cancelled.state == "cancelled")
+  #expect(cancelled.summary.hasPrefix("Monitoring stopped"))
+}

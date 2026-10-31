@@ -58,8 +58,11 @@ jobs:
         env:
           LINKWATCH_TEST_LOOPBACK: '1'
         run: swift test --parallel --enable-code-coverage -Xswiftc -warnings-as-errors
-      - name: Check core coverage
-        run: python3 scripts/check_coverage.py "$(swift test --show-codecov-path)" Sources/LinkWatchCore 90
+      - name: Check coverage
+        run: >-
+          python3 scripts/check_coverage.py "$(swift test --show-codecov-path)"
+          --gate Sources/LinkWatchCore=90 --file-floor Sources/LinkWatchCore=85
+          --report Sources/LinkWatchNetworking --report Sources/LinkWatchApp
       - name: Run tests with thread sanitizer
         env:
           LINKWATCH_TEST_LOOPBACK: '1'

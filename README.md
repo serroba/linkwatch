@@ -147,7 +147,7 @@ measured, sent and stored.
 | [Architecture](docs/architecture.md) | How the code fits together |
 | [Roadmap](docs/roadmap.md) | What comes next |
 | [Verification](docs/verification.md) | Manual checks before distribution |
-| [Contributing](CONTRIBUTING.md) | Building, checks and the pull request workflow |
+| [Contributing](CONTRIBUTING.md) | Building, checks (including the test coverage gates) and the pull request workflow |
 
 ## Status
 

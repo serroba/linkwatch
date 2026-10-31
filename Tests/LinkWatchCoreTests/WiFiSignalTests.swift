@@ -64,3 +64,13 @@ private func signal(_ rssi: Int, noise: Int = -94) -> WiFiSignal {
   harness.controller.paused = true
   #expect(harness.controller.signal == nil)
 }
+
+@Test func signalSummaryAndJSONListEveryField() throws {
+  let full = WiFiSignal(rssi: -50, noise: -95, transmitRate: 866.7, channel: 36, band: "5 GHz")
+  #expect(full.summary == "-50 dBm (excellent) · SNR 45 dB · 866 Mbit/s · channel 36 (5 GHz)")
+  let bare = WiFiSignal(rssi: -50, noise: -95, transmitRate: 144, channel: nil, band: nil)
+  #expect(bare.summary == "-50 dBm (excellent) · SNR 45 dB · 144 Mbit/s")
+  let json = String(bytes: try JSONEncoder().encode(bare), encoding: .utf8) ?? ""
+  #expect(json.contains("\"channel\":null") && json.contains("\"band\":null"))
+  #expect(try JSONDecoder().decode(WiFiSignal.self, from: Data(json.utf8)) == bare)
+}
