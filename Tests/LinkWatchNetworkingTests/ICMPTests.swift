@@ -1,4 +1,5 @@
 import Foundation
+import LinkWatchCore
 import Testing
 
 @testable import LinkWatchNetworking

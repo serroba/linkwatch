@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import CoreLocation
 import CoreWLAN
 import LinkWatchCore
@@ -23,7 +24,7 @@ final class Monitor: NSObject, ObservableObject, CLLocationManagerDelegate {
   private let pathMonitor = NWPathMonitor()
   private var sleeping = false
   private var inFlight: Task<ProbePair, Never>?
-  private var observers: [NSObjectProtocol] = []
+  private var observers: [any NSObjectProtocol] = []
   private let storageKey = "networkProfiles.v1"
 
   override init() {
@@ -128,43 +129,38 @@ final class Monitor: NSObject, ObservableObject, CLLocationManagerDelegate {
   }
 
   private func refresh() {
-    let interface = wifi.interface()
-    if permitted, let interface, interface.powerOn(), let ssid = interface.ssid(),
-      let bssid = interface.bssid(), !ssid.isEmpty, !bssid.isEmpty,
-      let name = interface.interfaceName
-    {
-      network = NetworkIdentity(ssid: ssid, bssid: bssid, interface: name)
-    } else {
-      network = nil
-    }
+    network = currentNetwork()
     if session.select(
       network: network, profiles: profiles, permitted: permitted, paused: paused || sleeping)
     {
       inFlight?.cancel()
       healthSince = ProcessInfo.processInfo.systemUptime
     }
-    if sleeping {
-      reason = "Paused while Mac sleeps"
-    } else if paused {
-      reason = "Paused manually"
-    } else if !permitted {
-      reason = "Location permission is needed to identify approved Wi-Fi networks"
-    } else if network == nil {
-      reason = "Wi-Fi is disconnected or its identity is unavailable"
-    } else if session.profile == nil {
-      reason = "This Wi-Fi network is not selected for monitoring"
-    } else if session.window.samples.isEmpty {
-      reason = "Waiting for paired measurements"
-    } else {
-      switch session.window.health {
-      case .healthy: reason = "No sustained degradation detected"
-      case .routerSlower: reason = "Router responses are persistently slower than the configured AP"
-      case .bothSlow: reason = "Both targets are slow; local Wi-Fi or laptop delay is possible"
-      case .unreachable(let accessPoint, let router):
-        reason =
-          "No reply from "
-          + (accessPoint && router ? "both targets" : accessPoint ? "AP" : "router")
-      }
+    reason = currentReason()
+  }
+
+  private func currentNetwork() -> NetworkIdentity? {
+    guard permitted, let interface = wifi.interface(), interface.powerOn(),
+      let ssid = interface.ssid(), let bssid = interface.bssid(), !ssid.isEmpty, !bssid.isEmpty,
+      let name = interface.interfaceName
+    else { return nil }
+    return NetworkIdentity(ssid: ssid, bssid: bssid, interface: name)
+  }
+
+  private func currentReason() -> String {
+    if sleeping { return "Paused while Mac sleeps" }
+    if paused { return "Paused manually" }
+    if !permitted { return "Location permission is needed to identify approved Wi-Fi networks" }
+    if network == nil { return "Wi-Fi is disconnected or its identity is unavailable" }
+    if session.profile == nil { return "This Wi-Fi network is not selected for monitoring" }
+    if session.window.samples.isEmpty { return "Waiting for paired measurements" }
+    switch session.window.health {
+    case .healthy: return "No sustained degradation detected"
+    case .routerSlower: return "Router responses are persistently slower than the configured AP"
+    case .bothSlow: return "Both targets are slow; local Wi-Fi or laptop delay is possible"
+    case .unreachable(let accessPoint, let router):
+      return "No reply from "
+        + (accessPoint && router ? "both targets" : accessPoint ? "AP" : "router")
     }
   }
 

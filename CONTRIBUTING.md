@@ -20,8 +20,24 @@ Run the same checks used by macOS CI:
 ```sh
 swift format lint --strict --recursive Package.swift Sources Tests
 swift build -Xswiftc -warnings-as-errors
-LINKWATCH_TEST_LOOPBACK=1 swift test --parallel -Xswiftc -warnings-as-errors
+LINKWATCH_TEST_LOOPBACK=1 swift test --parallel --enable-code-coverage -Xswiftc -warnings-as-errors
+python3 scripts/check_coverage.py "$(swift test --show-codecov-path)" Sources/LinkWatchCore 90
+LINKWATCH_TEST_LOOPBACK=1 swift test --sanitize=thread --scratch-path .build/tsan
+swiftlint lint --strict --quiet
+periphery scan
 ```
+
+`.swift-format` owns layout and forbids force unwraps, force `try` and implicitly
+unwrapped optionals. `.swiftlint.yml` adds semantic and complexity rules; split a
+function rather than raising a limit. Periphery fails on unused code. All targets
+enable the `ExistentialAny`, `InternalImportsByDefault` and `MemberImportVisibility`
+upcoming features. CI installs SwiftLint and Periphery from pinned releases and
+verifies their SHA-256 checksums with `scripts/install_tool.sh`; update the version
+and checksum together. With only Command Line Tools installed, run SwiftLint with
+`TOOLCHAIN_DIR=/Library/Developer/CommandLineTools`. Periphery needs an index store,
+so with Swift 6.4 build with `swift build --build-system native --scratch-path
+.build/native` and scan with `--skip-build --index-store-path
+.build/native/debug/index/store`.
 
 Do not remove package detection to skip a failing Swift build. Add meaningful
 tests for monitoring decisions, failed probes and network changes. Keep pure

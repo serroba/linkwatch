@@ -1,4 +1,4 @@
-import Foundation
+public import Foundation
 
 public enum ProbeOutcome: Equatable, Sendable {
   case success(milliseconds: Double)
@@ -75,58 +75,63 @@ public struct MonitoringWindow: Sendable {
   public var routerLoss: Double { loss(samples.map(\.router)) }
 
   public mutating func append(_ pair: ProbePair) {
-    guard pair.elapsed.isFinite, pair.elapsed >= 0,
-      pair.accessPoint != .cancelled, pair.router != .cancelled,
-      samples.last.map({ pair.elapsed > $0.elapsed }) ?? true
-    else { return }
-    if let previous = samples.last, pair.elapsed - previous.elapsed > 5 {
-      pending = nil
-      pendingSince = nil
-    }
-    samples.append(pair)
-    if samples.count > capacity { samples.removeFirst(samples.count - capacity) }
-    history.append(pair)
-    if history.count > historyCapacity { history.removeFirst(history.count - historyCapacity) }
+    guard accepts(pair) else { return }
+    if let previous = samples.last, pair.elapsed - previous.elapsed > 5 { clearPending() }
+    record(pair)
     guard pair.accessPoint.latency != nil, pair.router.latency != nil else {
       health = .unreachable(
         accessPoint: pair.accessPoint.latency == nil, router: pair.router.latency == nil)
-      pending = nil
-      pendingSince = nil
+      clearPending()
       return
     }
     health = assessed
     guard let accessPoint = accessPointMedian, let router = routerMedian else { return }
-    let desired: Health
-    if accessPoint > thresholds.slow && router > thresholds.slow {
-      desired = .bothSlow
-    } else if router - accessPoint > thresholds.difference {
-      desired = .routerSlower
-    } else if health != .healthy
-      && (router - accessPoint >= thresholds.recoveryDifference
-        || accessPoint >= thresholds.recoverySlow || router >= thresholds.recoverySlow)
-    {
-      pending = nil
-      pendingSince = nil
+    advance(toward: desiredHealth(accessPoint: accessPoint, router: router), at: pair.elapsed)
+  }
+
+  private func accepts(_ pair: ProbePair) -> Bool {
+    pair.elapsed.isFinite && pair.elapsed >= 0
+      && pair.accessPoint != .cancelled && pair.router != .cancelled
+      && (samples.last.map { pair.elapsed > $0.elapsed } ?? true)
+  }
+
+  private mutating func record(_ pair: ProbePair) {
+    samples.append(pair)
+    if samples.count > capacity { samples.removeFirst(samples.count - capacity) }
+    history.append(pair)
+    if history.count > historyCapacity { history.removeFirst(history.count - historyCapacity) }
+  }
+
+  /// Returns the current health while values sit between recovery and alert thresholds.
+  private func desiredHealth(accessPoint: Double, router: Double) -> Health {
+    if accessPoint > thresholds.slow && router > thresholds.slow { return .bothSlow }
+    if router - accessPoint > thresholds.difference { return .routerSlower }
+    let recovered =
+      router - accessPoint < thresholds.recoveryDifference
+      && accessPoint < thresholds.recoverySlow && router < thresholds.recoverySlow
+    return health == .healthy || recovered ? .healthy : health
+  }
+
+  private mutating func advance(toward desired: Health, at elapsed: TimeInterval) {
+    guard desired != health else {
+      clearPending()
       return
-    } else {
-      desired = .healthy
     }
-    if desired == health {
-      pending = nil
-      pendingSince = nil
-    } else {
-      if pending != desired {
-        pending = desired
-        pendingSince = pair.elapsed
-      }
-      let duration = desired == .healthy ? thresholds.recoverySeconds : thresholds.sustainedSeconds
-      if let since = pendingSince, pair.elapsed - since >= duration {
-        health = desired
-        assessed = desired
-        pending = nil
-        pendingSince = nil
-      }
+    if pending != desired {
+      pending = desired
+      pendingSince = elapsed
     }
+    let duration = desired == .healthy ? thresholds.recoverySeconds : thresholds.sustainedSeconds
+    if let since = pendingSince, elapsed - since >= duration {
+      health = desired
+      assessed = desired
+      clearPending()
+    }
+  }
+
+  private mutating func clearPending() {
+    pending = nil
+    pendingSince = nil
   }
 
   private func median(_ outcomes: [ProbeOutcome]) -> Double? {

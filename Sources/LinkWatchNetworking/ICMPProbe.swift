@@ -1,6 +1,6 @@
 import Darwin
 import Foundation
-import LinkWatchCore
+public import LinkWatchCore
 
 struct EchoPacket {
   let identifier: UInt16
@@ -56,24 +56,41 @@ public enum ICMPProbe {
     var destination = sockaddr_in()
     destination.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
     destination.sin_family = sa_family_t(AF_INET)
-    guard inet_pton(AF_INET, address, &destination.sin_addr) == 1 else { return .failure }
-    var interfaceIndex = if_nametoindex(interface)
-    guard interfaceIndex > 0 else { return .failure }
-    let descriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)
-    guard descriptor >= 0 else { return .failure }
+    guard inet_pton(AF_INET, address, &destination.sin_addr) == 1,
+      let descriptor = openSocket(interface: interface)
+    else { return .failure }
     defer { close(descriptor) }
+    let packet = EchoPacket(
+      identifier: UInt16.random(in: 1...UInt16.max),
+      payload: Array(UUID().uuidString.utf8))
+    let started = ProcessInfo.processInfo.systemUptime
+    guard !Task.isCancelled else { return .cancelled }
+    guard send(packet.request, to: destination, on: descriptor) else { return .failure }
+    return awaitReply(for: packet, from: destination, on: descriptor, started: started)
+  }
+
+  /// Opens a non-blocking unprivileged ICMP socket bound to the named interface.
+  private static func openSocket(interface: String) -> Int32? {
+    var interfaceIndex = if_nametoindex(interface)
+    guard interfaceIndex > 0 else { return nil }
+    let descriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)
+    guard descriptor >= 0 else { return nil }
     guard
       setsockopt(
         descriptor, IPPROTO_IP, IP_BOUND_IF, &interfaceIndex,
         socklen_t(MemoryLayout<UInt32>.size)) == 0,
       fcntl(descriptor, F_SETFL, O_NONBLOCK) == 0
-    else { return .failure }
-    let packet = EchoPacket(
-      identifier: UInt16.random(in: 1...UInt16.max),
-      payload: Array(UUID().uuidString.utf8))
-    let request = packet.request
-    let started = ProcessInfo.processInfo.systemUptime
-    guard !Task.isCancelled else { return .cancelled }
+    else {
+      close(descriptor)
+      return nil
+    }
+    return descriptor
+  }
+
+  private static func send(_ request: [UInt8], to destination: sockaddr_in, on descriptor: Int32)
+    -> Bool
+  {
+    var destination = destination
     let sent = withUnsafePointer(to: &destination) { pointer in
       pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
         request.withUnsafeBytes { buffer in
@@ -83,37 +100,65 @@ public enum ICMPProbe {
         }
       }
     }
-    guard sent == request.count else { return .failure }
+    return sent == request.count
+  }
+
+  private static func awaitReply(
+    for packet: EchoPacket, from destination: sockaddr_in, on descriptor: Int32,
+    started: TimeInterval
+  ) -> ProbeOutcome {
     while ProcessInfo.processInfo.systemUptime - started < 1 {
       if Task.isCancelled { return .cancelled }
-      var event = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
-      let ready = poll(&event, 1, 50)
-      if ready < 0 {
-        if errno == EINTR { continue }
-        return .failure
+      switch waitForReadable(descriptor) {
+      case .idle: continue
+      case .failed: return .failure
+      case .readable: break
       }
-      if ready == 0 { continue }
-      guard event.revents & Int16(POLLIN) != 0 else { return .failure }
-      var buffer = [UInt8](repeating: 0, count: 2048)
-      var sender = sockaddr_in()
-      var senderLength = socklen_t(MemoryLayout<sockaddr_in>.size)
-      let count = withUnsafeMutablePointer(to: &sender) { pointer in
-        pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
-          buffer.withUnsafeMutableBytes { bytes in
-            recvfrom(descriptor, bytes.baseAddress, bytes.count, 0, socketAddress, &senderLength)
-          }
-        }
-      }
-      if count < 0 {
-        if errno == EAGAIN || errno == EINTR { continue }
-        return .failure
-      }
-      guard sender.sin_addr.s_addr == destination.sin_addr.s_addr else { continue }
-      if packet.matches(Array(buffer.prefix(count))) {
+      switch receive(on: descriptor) {
+      case .retry: continue
+      case .failed: return .failure
+      case .received(let bytes, let sender):
+        guard sender == destination.sin_addr.s_addr, packet.matches(bytes) else { continue }
         guard !Task.isCancelled else { return .cancelled }
         return .success(milliseconds: (ProcessInfo.processInfo.systemUptime - started) * 1000)
       }
     }
     return Task.isCancelled ? .cancelled : .timeout
+  }
+
+  private enum Readiness {
+    case readable
+    case idle
+    case failed
+  }
+
+  /// Waits up to 50 ms so cancellation and the deadline are checked regularly.
+  private static func waitForReadable(_ descriptor: Int32) -> Readiness {
+    var event = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
+    let ready = poll(&event, 1, 50)
+    if ready < 0 { return errno == EINTR ? .idle : .failed }
+    if ready == 0 { return .idle }
+    return event.revents & Int16(POLLIN) != 0 ? .readable : .failed
+  }
+
+  private enum Reception {
+    case received([UInt8], sender: in_addr_t)
+    case retry
+    case failed
+  }
+
+  private static func receive(on descriptor: Int32) -> Reception {
+    var buffer = [UInt8](repeating: 0, count: 2048)
+    var sender = sockaddr_in()
+    var senderLength = socklen_t(MemoryLayout<sockaddr_in>.size)
+    let count = withUnsafeMutablePointer(to: &sender) { pointer in
+      pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
+        buffer.withUnsafeMutableBytes { bytes in
+          recvfrom(descriptor, bytes.baseAddress, bytes.count, 0, socketAddress, &senderLength)
+        }
+      }
+    }
+    guard count >= 0 else { return errno == EAGAIN || errno == EINTR ? .retry : .failed }
+    return .received(Array(buffer.prefix(count)), sender: sender.sin_addr.s_addr)
   }
 }
