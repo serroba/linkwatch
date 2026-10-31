@@ -224,7 +224,7 @@ connection can be identified. The **connection path** says which device the Mac 
 connected through: discovery's BSSID match decides (router or access point); without a
 match, the device answering at least 2 ms faster is taken as the nearer one, since
 reaching the other crosses the bridge; otherwise the path is unknown and shown as
-such. Discovery reruns on every roam, every minute, and on **Detect again** (`detect`).
+such. Discovery reruns on every roam, every minute, after each Find AP search, and on `detect`.
 
 Through the access point, verdicts work as described above. On the router's own
 Wi-Fi the router is the Mac's first hop: the verdict uses the router in place of the
@@ -254,12 +254,21 @@ advice names the phone: a poor or spiky AP link or weak signal becomes "the
 connection between the Mac and the phone", and internet trouble becomes the phone's
 mobile reception.
 
-**Find AP** is the only feature that sends traffic to discover devices. It runs only
-on request, takes the Wi-Fi interface's IPv4 address and netmask, refuses addresses
+**Find AP** is the only feature that sends traffic to discover devices. It runs on
+request (**Find it** / **Search again** in the panel, **Find access point** in
+Settings, `find-ap`), and automatically only while a monitored profile has no AP and
+the Mac is connected through an unknown access point, at most once per 30 minutes per
+BSSID. It takes the Wi-Fi interface's IPv4 address and netmask, refuses addresses
 outside 10/8, 172.16/12, 192.168/16 and 169.254/16 and subnets larger than /22, and
 sends one ICMP echo to every other host address, at most 32 at a time, bound to the
 Wi-Fi interface. Replies are ignored; the point is that macOS resolves each address
-with ARP. Discovery then reruns against the refreshed cache. A /24 takes roughly
+with ARP. Discovery then reruns against the refreshed cache. When nothing matches, the result
+names the radio's BSSID and how many addresses answered: if only a handful answered,
+the network is probably isolating Wi-Fi clients or blocking pings, and the AP's
+address has to be entered by hand. A radio matches a wired address that is identical,
+differs only in the locally administered bit, or is within 7 in the last byte; failing
+that, a single other device in the same address block (all but the last byte) is
+taken as the AP. A /24 takes roughly
 half a minute because absent hosts time out after one second.
 
 ## Native probes

@@ -60,10 +60,23 @@ extension MonitorController {
       "The access point is slow to reach through \(bridge). This Mac is on the router's Wi-Fi, so only devices using the access point are affected."
   }
 
+  /// How long before the subnet is searched again automatically from the same radio.
+  public static let automaticSearchInterval = 1800.0
+
+  /// Whether the Mac is behind an access point a monitored network does not know and the
+  /// subnet has not been searched from this radio recently.
+  public var accessPointSearchIsDue: Bool {
+    guard behindUnknownAccessPoint, let network else { return false }
+    if case .searching = accessPointSearch { return false }
+    guard let searchedFrom, searchedFrom.bssid == network.bssid else { return true }
+    return uptime() - searchedFrom.at >= Self.automaticSearchInterval
+  }
+
   /// Pings every host in the Wi-Fi subnet once so the ARP cache can reveal the access point.
   ///
-  /// Runs only when the user asks, refuses public or larger than /22 subnets, and never
-  /// starts monitoring by itself.
+  /// Runs when the user asks, or once per half hour per radio while a monitored network's
+  /// access point is unknown. Refuses public or larger than /22 subnets, and never starts
+  /// monitoring by itself.
   public func searchForAccessPoint() async {
     if case .searching = accessPointSearch { return }
     guard let network, !sleeping else {
@@ -82,35 +95,41 @@ extension MonitorController {
       accessPointSearch = .finished(error.description)
       return
     }
+    searchedFrom = (network.bssid, uptime())
     accessPointSearch = .searching(hosts: hosts.count)
-    await Self.ping(hosts, over: network.interface, with: probe)
+    let answered = await Self.ping(hosts, over: network.interface, with: probe)
     networkChanged()
-    accessPointSearch = .finished(searchSummary(hosts: hosts.count))
+    accessPointSearch = .finished(
+      searchSummary(hosts: hosts.count, answered: answered, bssid: network.bssid))
   }
 
+  /// Pings each host once, at most 32 at a time, and counts the replies.
   private static func ping(_ hosts: [String], over interface: String, with probe: any LatencyProbe)
-    async
+    async -> Int
   {
-    await withTaskGroup(of: Void.self) { group in
+    await withTaskGroup(of: Bool.self) { group in
       var pending = hosts.makeIterator()
       for _ in 0..<32 {
         guard let host = pending.next() else { break }
-        group.addTask { _ = await probe.measure(address: host, interface: interface) }
+        group.addTask { await probe.measure(address: host, interface: interface).latency != nil }
       }
-      while await group.next() != nil {
+      var answered = 0
+      while let reply = await group.next() {
+        if reply { answered += 1 }
         guard let host = pending.next() else { continue }
-        group.addTask { _ = await probe.measure(address: host, interface: interface) }
+        group.addTask { await probe.measure(address: host, interface: interface).latency != nil }
       }
+      return answered
     }
   }
 
-  private func searchSummary(hosts: Int) -> String {
+  private func searchSummary(hosts: Int, answered: Int, bssid: String) -> String {
     let addresses = hosts == 1 ? "1 address" : "\(hosts) addresses"
     return switch discovery?.accessPoint {
     case .found(let address): "Found the AP at \(address) after pinging \(addresses)."
     case .router: "The associated AP is the router itself, so there is no separate AP to compare."
     case .unknown, nil:
-      "No device among \(addresses) matches the AP. Enter its address in Settings."
+      "No device among \(addresses) (\(answered) answered) matches the AP's radio \(bssid). Enter its address in Settings."
     }
   }
 }

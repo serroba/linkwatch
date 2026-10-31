@@ -8,7 +8,7 @@ lists everything it measures, sends and stores.
 | Permission | Why | What LinkWatch does not do |
 |---|---|---|
 | Location | macOS reveals the Wi-Fi name (SSID) and access point (BSSID) only to apps with Location permission. | It never requests or reads coordinates. |
-| Local Network | Needed to ping the router and access point on your network. | It does not browse or advertise services, and only sweeps the subnet when you click Find AP. |
+| Local Network | Needed to ping the router and access point on your network. | It does not browse or advertise services. It sweeps the subnet only when you click Find AP, or on its own while a monitored network's access point is unknown (at most once per half hour per access point). |
 | Notifications (optional) | Asked only when you turn on **Notify me when a problem lasts 3 minutes**. | Notifications are shown on this Mac only; nothing is sent anywhere. |
 
 ## Traffic it sends
@@ -25,9 +25,11 @@ Wi-Fi interface:
   `profile set --ssid NAME --internet off`. On a phone hotspot, or any connection
   macOS marks as expensive, these run every ten seconds instead, and a network whose
   access point is the router receives one ping per cycle rather than two.
-- **Find AP**, only when you click it: one ping to each address of your Wi-Fi subnet,
-  so macOS learns the access point's hardware address. It refuses public networks
-  and subnets larger than /22.
+- **Find AP**: one ping to each address of your Wi-Fi subnet, so macOS learns the
+  access point's hardware address. It runs when you click **Find it** or **Search
+  again**, and on its own only on a network you chose to monitor while the Mac is
+  connected through an access point whose address is unknown, at most once per half
+  hour per access point radio. It refuses public networks and subnets larger than /22.
 - **`probe`**, only when run from the command line, to the address given.
 - **One update check a day** to `api.github.com` (LinkWatch's public latest-release
   page), over any network. GitHub sees this Mac's public IP address and a User-Agent

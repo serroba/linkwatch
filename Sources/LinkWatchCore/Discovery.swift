@@ -41,14 +41,22 @@ public struct NetworkDiscovery: Equatable, Sendable {
     }?.hardwareAddress
     behindAccessPoint =
       routerHardware.map { !HardwareAddress.isRadio(network.bssid, of: $0) } ?? false
-    let candidates = Set(
-      neighbors
-        .filter {
-          $0.interface == network.interface
-            && HardwareAddress.isRadio(network.bssid, of: $0.hardwareAddress)
-            && NetworkProfile.validAddress($0.address)
+    let local = neighbors.filter {
+      $0.interface == network.interface && NetworkProfile.validAddress($0.address)
+    }
+    var candidates = Set(
+      local.filter { HardwareAddress.isRadio(network.bssid, of: $0.hardwareAddress) }
+        .map(\.address))
+    // Some vendors offset their radios further; a single other device from the same
+    // address block is still unambiguous.
+    if candidates.isEmpty {
+      candidates = Set(
+        local.filter {
+          $0.address != router
+            && HardwareAddress.sharesBlock(network.bssid, with: $0.hardwareAddress)
         }
         .map(\.address))
+    }
     if candidates.count == 1, let address = candidates.first {
       accessPoint = address == self.router ? .router : .found(address)
     } else {
@@ -111,5 +119,14 @@ enum HardwareAddress {
     if radio == device { return true }
     return radio[0] | 0x02 == device[0] | 0x02 && radio[1..<5] == device[1..<5]
       && abs(Int(radio[5]) - Int(device[5])) <= 7
+  }
+
+  /// Whether two addresses differ only in the last byte, ignoring the locally administered
+  /// bit.
+  static func sharesBlock(_ bssid: String, with hardwareAddress: String) -> Bool {
+    guard let radio = parse(bssid), let device = parse(hardwareAddress),
+      radio != [0, 0, 0, 0, 0, 0]
+    else { return false }
+    return radio[0] | 0x02 == device[0] | 0x02 && radio[1..<5] == device[1..<5]
   }
 }
