@@ -2,84 +2,74 @@ import AppKit
 import Combine
 import CoreLocation
 import CoreWLAN
+import Foundation
 import LinkWatchCore
 import LinkWatchNetworking
 import Network
-import SwiftUI
 import SystemConfiguration
 
+/// Owns the controller and connects it to macOS notifications and timers.
+///
+/// Views observe the controller; conforming here only gives the app `@StateObject` ownership,
+/// because the `@State` macro is unavailable with Command Line Tools alone.
 @MainActor
-final class Monitor: NSObject, ObservableObject, CLLocationManagerDelegate {
-  @Published private(set) var session = MonitoringSession()
-  @Published private(set) var profiles: [NetworkProfile] = []
-  @Published private(set) var network: NetworkIdentity?
-  @Published private(set) var reason = "Choose a Wi-Fi network in Settings"
-  @Published private(set) var storageError: String?
-  @Published private(set) var healthSince = ProcessInfo.processInfo.systemUptime
-  @Published var paused = false {
-    didSet { refresh() }
+final class Monitor: ObservableObject {
+  let controller: MonitorController
+  let environment: SystemEnvironment
+  private let pathMonitor = NWPathMonitor()
+  private var observers: [any NSObjectProtocol] = []
+
+  init() {
+    environment = SystemEnvironment()
+    controller = MonitorController(
+      environment: environment, probe: ICMPLatencyProbe(), store: UserDefaultsProfileStore(),
+      uptime: { ProcessInfo.processInfo.systemUptime })
+    environment.onAuthorizationChange = { [weak controller] in controller?.refresh() }
+    observeLifecycle()
+    Task { [weak controller] in
+      while let controller {
+        controller.refresh()
+        try? await Task.sleep(for: .milliseconds(500))
+      }
+    }
+    Task { [weak controller] in
+      while let controller {
+        let delay = await controller.cycle()
+        try? await Task.sleep(for: .seconds(delay))
+      }
+    }
   }
+
+  private func observeLifecycle() {
+    let center = NSWorkspace.shared.notificationCenter
+    for (name, sleeping) in [
+      (NSWorkspace.willSleepNotification, true), (NSWorkspace.didWakeNotification, false),
+    ] {
+      observers.append(
+        center.addObserver(forName: name, object: nil, queue: .main) { [weak controller] _ in
+          Task { @MainActor in controller?.setSleeping(sleeping) }
+        })
+    }
+    pathMonitor.pathUpdateHandler = { [weak controller] _ in
+      Task { @MainActor in controller?.networkChanged() }
+    }
+    pathMonitor.start(queue: DispatchQueue(label: "LinkWatch.network"))
+  }
+}
+
+/// Reads Wi-Fi identity through CoreWLAN, gated by Location permission.
+@MainActor
+final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDelegate {
+  var onAuthorizationChange: (@MainActor () -> Void)?
   private let location = CLLocationManager()
   private let wifi = CWWiFiClient.shared()
-  private let pathMonitor = NWPathMonitor()
-  private var sleeping = false
-  private var inFlight: Task<ProbePair, Never>?
-  private var observers: [any NSObjectProtocol] = []
-  private let storageKey = "networkProfiles.v1"
 
   override init() {
     super.init()
     location.delegate = self
-    if let data = UserDefaults.standard.data(forKey: storageKey) {
-      if let decoded = try? JSONDecoder().decode([NetworkProfile].self, from: data),
-        decoded.allSatisfy(\.isValid), Set(decoded.map(\.ssid)).count == decoded.count
-      {
-        profiles = decoded
-      } else {
-        storageError =
-          "Saved profiles could not be read. Monitoring is paused until you save a profile."
-      }
-    }
-    let center = NSWorkspace.shared.notificationCenter
-    observers.append(
-      center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) {
-        [weak self] _ in
-        Task { @MainActor in
-          self?.sleeping = true
-          self?.invalidate()
-          self?.refresh()
-        }
-      })
-    observers.append(
-      center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) {
-        [weak self] _ in
-        Task { @MainActor in
-          self?.sleeping = false
-          self?.invalidate()
-          self?.refresh()
-        }
-      })
-    pathMonitor.pathUpdateHandler = { [weak self] _ in
-      Task { @MainActor in
-        self?.invalidate()
-        self?.refresh()
-      }
-    }
-    pathMonitor.start(queue: DispatchQueue(label: "LinkWatch.network"))
-    Task { [weak self] in
-      while let self {
-        self.refresh()
-        try? await Task.sleep(for: .milliseconds(500))
-      }
-    }
-    Task { [weak self] in
-      while let self {
-        await self.cycle()
-      }
-    }
   }
 
-  var permitted: Bool {
+  var isPermitted: Bool {
     location.authorizationStatus == .authorizedAlways
   }
 
@@ -89,138 +79,38 @@ final class Monitor: NSObject, ObservableObject, CLLocationManagerDelegate {
   }
 
   nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-    Task { @MainActor in self.refresh() }
+    Task { @MainActor in self.onAuthorizationChange?() }
   }
 
-  func save(_ profile: NetworkProfile) -> Bool {
-    guard profile.isValid else { return false }
-    var updated = profiles.filter { $0.id != profile.id && $0.ssid != profile.ssid }
-    updated.append(profile)
-    persist(updated)
-    return true
-  }
-
-  func remove(_ profile: NetworkProfile) {
-    persist(profiles.filter { $0.id != profile.id })
-  }
-
-  private func persist(_ updated: [NetworkProfile]) {
-    guard let data = try? JSONEncoder().encode(updated) else { return }
-    UserDefaults.standard.set(data, forKey: storageKey)
-    profiles = updated
-    storageError = nil
-    invalidate()
-    refresh()
-  }
-
-  func suggestedRouter() -> String? {
-    guard let store = SCDynamicStoreCreate(nil, "LinkWatch" as CFString, nil, nil),
-      let values = SCDynamicStoreCopyValue(store, "State:/Network/Global/IPv4" as CFString)
-        as? [String: Any],
-      let interface = network?.interface, values["PrimaryInterface"] as? String == interface
-    else { return nil }
-    return values["Router"] as? String
-  }
-
-  private func invalidate() {
-    inFlight?.cancel()
-    session.reset()
-    healthSince = ProcessInfo.processInfo.systemUptime
-  }
-
-  private func refresh() {
-    network = currentNetwork()
-    if session.select(
-      network: network, profiles: profiles, permitted: permitted, paused: paused || sleeping)
-    {
-      inFlight?.cancel()
-      healthSince = ProcessInfo.processInfo.systemUptime
-    }
-    reason = currentReason()
-  }
-
-  private func currentNetwork() -> NetworkIdentity? {
-    guard permitted, let interface = wifi.interface(), interface.powerOn(),
+  func currentNetwork() -> NetworkIdentity? {
+    guard isPermitted, let interface = wifi.interface(), interface.powerOn(),
       let ssid = interface.ssid(), let bssid = interface.bssid(), !ssid.isEmpty, !bssid.isEmpty,
       let name = interface.interfaceName
     else { return nil }
     return NetworkIdentity(ssid: ssid, bssid: bssid, interface: name)
   }
 
-  private func currentReason() -> String {
-    if sleeping { return "Paused while Mac sleeps" }
-    if paused { return "Paused manually" }
-    if !permitted { return "Location permission is needed to identify approved Wi-Fi networks" }
-    if network == nil { return "Wi-Fi is disconnected or its identity is unavailable" }
-    if session.profile == nil { return "This Wi-Fi network is not selected for monitoring" }
-    if session.window.samples.isEmpty { return "Waiting for paired measurements" }
-    switch session.window.health {
-    case .healthy: return "No sustained degradation detected"
-    case .routerSlower: return "Router responses are persistently slower than the configured AP"
-    case .bothSlow: return "Both targets are slow; local Wi-Fi or laptop delay is possible"
-    case .unreachable(let accessPoint, let router):
-      return "No reply from "
-        + (accessPoint && router ? "both targets" : accessPoint ? "AP" : "router")
-    }
+  /// Returns the IPv4 router only when the given interface owns the default route.
+  func defaultRouter(for interface: String) -> String? {
+    guard let store = SCDynamicStoreCreate(nil, "LinkWatch" as CFString, nil, nil),
+      let values = SCDynamicStoreCopyValue(store, "State:/Network/Global/IPv4" as CFString)
+        as? [String: Any],
+      values["PrimaryInterface"] as? String == interface
+    else { return nil }
+    return values["Router"] as? String
+  }
+}
+
+/// Stores profiles as JSON in the app's user defaults.
+struct UserDefaultsProfileStore: ProfileStore {
+  private let key = "networkProfiles.v1"
+
+  func load() throws -> [NetworkProfile]? {
+    guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+    return try JSONDecoder().decode([NetworkProfile].self, from: data)
   }
 
-  private func cycle() async {
-    let started = ProcessInfo.processInfo.systemUptime
-    refresh()
-    if let profile = session.profile, let network = session.network {
-      let generation = session.generation
-      let task = Task {
-        async let accessPoint = ICMPProbe.measure(
-          address: profile.accessPoint, interface: network.interface)
-        async let router = ICMPProbe.measure(address: profile.router, interface: network.interface)
-        return await ProbePair(
-          elapsed: ProcessInfo.processInfo.systemUptime, accessPoint: accessPoint, router: router)
-      }
-      inFlight = task
-      let pair = await task.value
-      refresh()
-      let previous = session.window.health
-      session.accept(pair, generation: generation)
-      if previous != session.window.health { healthSince = ProcessInfo.processInfo.systemUptime }
-      inFlight = nil
-      refresh()
-    }
-    let remaining = max(0.05, 2 - (ProcessInfo.processInfo.systemUptime - started))
-    try? await Task.sleep(for: .seconds(remaining))
-  }
-
-  var accessPointLatency: Double? {
-    guard session.window.samples.last?.accessPoint.latency != nil else { return nil }
-    return session.window.accessPointMedian
-  }
-
-  var routerLatency: Double? {
-    guard session.window.samples.last?.router.latency != nil else { return nil }
-    return session.window.routerMedian
-  }
-
-  var color: Color {
-    guard session.profile != nil, !session.window.samples.isEmpty else { return .gray }
-    switch session.window.health {
-    case .healthy: return .green
-    case .bothSlow: return .orange
-    case .routerSlower: return .red
-    case .unreachable: return .purple
-    }
-  }
-
-  var symbol: String {
-    guard session.profile != nil, !session.window.samples.isEmpty else {
-      return "pause.circle.fill"
-    }
-    switch session.window.health {
-    case .healthy: return "checkmark.circle.fill"
-    case .bothSlow, .routerSlower: return "exclamationmark.triangle.fill"
-    case .unreachable: return "xmark.octagon.fill"
-    }
-  }
-
-  func latencyText(_ value: Double?) -> String {
-    value.map { String(format: "%.0f", $0) } ?? "—"
+  func save(_ profiles: [NetworkProfile]) throws {
+    UserDefaults.standard.set(try JSONEncoder().encode(profiles), forKey: key)
   }
 }

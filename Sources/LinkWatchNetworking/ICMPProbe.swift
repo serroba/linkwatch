@@ -39,8 +39,8 @@ struct EchoPacket {
   }
 }
 
-public enum ICMPProbe {
-  public static func measure(address: String, interface: String) async -> ProbeOutcome {
+enum ICMPProbe {
+  static func measure(address: String, interface: String) async -> ProbeOutcome {
     let worker = Task.detached(priority: .utility) {
       perform(address: address, interface: interface)
     }
@@ -160,5 +160,14 @@ public enum ICMPProbe {
     }
     guard count >= 0 else { return errno == EAGAIN || errno == EINTR ? .retry : .failed }
     return .received(Array(buffer.prefix(count)), sender: sender.sin_addr.s_addr)
+  }
+}
+
+/// Measures latency with native ICMP echo requests.
+public struct ICMPLatencyProbe: LatencyProbe {
+  public init() {}
+
+  public func measure(address: String, interface: String) async -> ProbeOutcome {
+    await ICMPProbe.measure(address: address, interface: interface)
   }
 }
