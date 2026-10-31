@@ -74,6 +74,8 @@ public protocol NetworkEnvironment: AnyObject {
   func interfaceAddress(_ interface: String) -> InterfaceAddress?
   /// Cumulative byte counters for the interface, read without sending traffic.
   func traffic(on interface: String) -> TrafficCounters?
+  /// The radio's signal readings, or nil when unavailable.
+  func signal() -> WiFiSignal?
 }
 
 /// Persists approved network profiles on this Mac.
@@ -123,6 +125,8 @@ public final class MonitorController {
   @ObservationIgnored var pendingVerdict: (verdict: Verdict, since: TimeInterval)?
   /// The latest download and upload rate, or nil before two readings on one network.
   public internal(set) var usage: Usage?
+  /// The latest Wi-Fi radio readings while monitoring.
+  public internal(set) var signal: WiFiSignal?
   @ObservationIgnored var lastTraffic: TrafficReading?
   /// Rates from the last five cycles and the highest seen in this session.
   @ObservationIgnored var recentRates: [Double] = []
@@ -297,6 +301,7 @@ public final class MonitorController {
       let previous = session.window.health
       session.accept(pair, generation: generation)
       if generation == session.generation, session.window.samples.last == pair {
+        signal = environment.signal()
         record(pair, traffic: trafficDelta(on: network.interface, at: pair.elapsed))
         updateVerdict(at: pair.elapsed)
         advanceDeviceTest(at: pair.elapsed)
@@ -356,6 +361,7 @@ public final class MonitorController {
     verdict = .allClear
     pendingVerdict = nil
     usage = nil
+    signal = nil
     lastTraffic = nil
     recentRates = []
     sessionPeakRate = 0

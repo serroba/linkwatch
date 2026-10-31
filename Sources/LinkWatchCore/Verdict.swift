@@ -25,6 +25,8 @@ public struct LinkEvidence: Equatable, Sendable {
   public var internet: TargetEvidence?
   /// Whether the Mac was moving enough data to slow the connection by itself.
   public var busy: Bool
+  /// Whether the Mac's Wi-Fi signal was weak, which explains a slow access point.
+  public var weakSignal = false
 
   public init(
     accessPoint: TargetEvidence, router: TargetEvidence, internet: TargetEvidence?,
@@ -44,6 +46,10 @@ public struct LinkEvidence: Equatable, Sendable {
       median: minute.router.median, loss: minute.router.loss, p95: minute.router.p95)
     internet = minute.internet.map { TargetEvidence(median: $0.median, loss: $0.loss, p95: $0.p95) }
     busy = minute.bitsPerSecond.map { Load.isBusy($0, peak: peakBitsPerSecond) } ?? false
+    if let rssi = minute.rssi, let noise = minute.noise {
+      weakSignal =
+        WiFiSignal(rssi: rssi, noise: noise, transmitRate: 0, channel: nil, band: nil).isWeak
+    }
   }
 }
 
@@ -84,6 +90,8 @@ public enum Verdict: String, Codable, Equatable, Sendable {
   case busy
   /// Typical latency is fine but the Wi-Fi link to the access point has frequent spikes.
   case accessPointSpikes
+  /// The access point is slow, lossy or spiky while the Mac's Wi-Fi signal is weak.
+  case weakSignal
   /// Typical latency is fine but spikes start between the access point and the router.
   case bridgeSpikes
   /// Typical latency is fine but spikes start beyond the router.
@@ -100,9 +108,9 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     let accessPoint = evidence.accessPoint
     let router = evidence.router
     if accessPoint.isLost {
-      self = .accessPoint
+      self = evidence.weakSignal ? .weakSignal : .accessPoint
     } else if (accessPoint.median ?? 0) > thresholds.slow {
-      self = evidence.busy ? .busy : .accessPoint
+      self = evidence.busy ? .busy : evidence.weakSignal ? .weakSignal : .accessPoint
     } else if router.isLost {
       // A silent router with a working internet is not a failing link: traffic still flows.
       switch evidence.internet?.isLost {
@@ -121,7 +129,9 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     {
       self = evidence.busy ? .busy : .internet
     } else if let spikes = Self.spikes(evidence) {
-      self = evidence.busy ? .busy : spikes
+      self =
+        evidence.busy
+        ? .busy : spikes == .accessPointSpikes && evidence.weakSignal ? .weakSignal : spikes
     } else {
       self = .allClear
     }
@@ -153,6 +163,7 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     case .busy:
       "The connection is busy with a large download or upload, which slows everything else."
     case .accessPointSpikes: "The Wi-Fi connection has frequent lag spikes."
+    case .weakSignal: "The Wi-Fi signal is weak here."
     case .bridgeSpikes:
       "The connection between the access point and the router"
         + (bridge.map { " (\($0))" } ?? "") + " has frequent lag spikes."
@@ -180,6 +191,9 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     case .busy: "Nothing is broken. Wait for the transfer to finish, or pause it."
     case .accessPointSpikes:
       "If calls or video stutter, move closer to the access point; if it continues nearby, restart the access point."
+    case .weakSignal:
+      "Move closer to the access point or away from walls and metal. Restarting the access point or "
+        + (bridge.map { "the \($0)" } ?? "other equipment") + " will not help."
     case .bridgeSpikes:
       "If calls or video stutter, restart "
         + (bridge.map { "the \($0)." } ?? "the device linking the access point to the router.")

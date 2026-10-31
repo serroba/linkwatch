@@ -178,6 +178,21 @@ final class SystemEnvironment: NSObject, NetworkEnvironment, CLLocationManagerDe
     InterfaceCounters.traffic(on: interface)
   }
 
+  func signal() -> WiFiSignal? {
+    guard let interface = wifi.interface(), interface.rssiValue() != 0 else { return nil }
+    let channel = interface.wlanChannel()
+    let band: String? =
+      switch channel?.channelBand {
+      case .band2GHz: "2.4 GHz"
+      case .band5GHz: "5 GHz"
+      case .band6GHz: "6 GHz"
+      default: nil
+      }
+    return WiFiSignal(
+      rssi: interface.rssiValue(), noise: interface.noiseMeasurement(),
+      transmitRate: interface.transmitRate(), channel: channel?.channelNumber, band: band)
+  }
+
   /// Returns the IPv4 router assigned to the network service on this interface.
   ///
   /// This works while another interface, such as a VPN, owns the default route; probes stay

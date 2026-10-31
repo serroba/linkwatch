@@ -110,6 +110,11 @@ public struct DiagnoseReport: Codable, Equatable, Sendable {
     } else if status.network == nil {
       notes.append("Wi-Fi is off or not connected, so nothing is monitored right now.")
     }
+    if let signal = status.signal, signal.isWeak {
+      notes.append(
+        "The Wi-Fi signal is weak (\(signal.rssi) dBm, SNR \(signal.snr) dB): moving closer to the access point should help more than restarting anything."
+      )
+    }
     if status.verdict == .routerSilent {
       notes.append(
         "The router ignores LinkWatch while the internet works: check Local Network permission.")
@@ -228,13 +233,14 @@ extension HistoryRollup {
     formatter.dateFormat = "yyyy-MM-dd HH:00"
     var lines = [
       "Hour              Mins  AP median/p95  loss   Router median/p95  loss   "
-        + "Internet median/p95  loss    ↓ MB    ↑ MB  Problem minutes"
+        + "Internet median/p95  loss    ↓ MB    ↑ MB  RSSI  Problem minutes"
     ]
     for hour in hours {
       var line = formatter.string(from: hour.start) + "  " + pad(String(hour.minutesRecorded), 4)
       line += "  " + link(hour.accessPoint) + "  " + link(hour.router) + "  "
       line += hour.internet.map(link) ?? pad("not probed", 21)
       line += "  " + megabytes(hour.received) + "  " + megabytes(hour.sent)
+      line += "  " + pad(hour.rssi.map(String.init) ?? "—", 4)
       line += "  \(hour.problemMinutes)/\(hour.minutesRecorded)"
       if let common = hour.commonProblem { line += " mostly \(common.rawValue)" }
       lines.append(line)

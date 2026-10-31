@@ -125,8 +125,9 @@ extension Verdict: Comparable {
     case .routerSilent: 5
     case .routerUnreachable: 6
     case .internet: 7
-    case .accessPoint: 8
-    case .bridge: 9
+    case .weakSignal: 8
+    case .accessPoint: 9
+    case .bridge: 10
     }
   }
 
@@ -134,7 +135,7 @@ extension Verdict: Comparable {
   var family: Int {
     switch self {
     case .allClear: 0
-    case .accessPoint, .accessPointSpikes: 1
+    case .accessPoint, .accessPointSpikes, .weakSignal: 1
     case .bridge, .bridgeSpikes: 2
     case .internet, .internetSpikes: 3
     case .routerSilent, .routerUnreachable: 4
@@ -153,6 +154,7 @@ extension Verdict: Comparable {
     case .internet: "internet provider"
     case .busy: "busy connection"
     case .accessPointSpikes: "lag spikes on Wi-Fi"
+    case .weakSignal: "weak Wi-Fi signal"
     case .bridgeSpikes: "lag spikes on " + (bridge ?? "the link between access point and router")
     case .internetSpikes: "lag spikes on the internet"
     }

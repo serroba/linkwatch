@@ -36,6 +36,8 @@ happened and which link failed, on the Mac where it happened.
 - **Marks and a guided device test** to check whether something at home, such as an
   electric desk, disturbs a link, and an **event log** that explains gaps.
 - **Lag-spike detection**, so stutter hidden behind healthy medians is reported.
+- **Wi-Fi signal readings** (RSSI, noise, SNR, link rate, channel), separating a
+  weak signal from a struggling access point in the verdict and the history.
 - **Export report** for sending a week of evidence from another Mac, with optional
   redaction, which the diagnose skill reads directly.
 - **Survives restarts**: opens at login, and settings and the week of history are
@@ -45,21 +47,18 @@ happened and which link failed, on the Mac where it happened.
 
 1. **Easier updates.** A Homebrew tap (`brew install --cask linkwatch`) or an in-app
    "update available" notice built on the releases.
-2. **Wi-Fi signal readings.** Signal strength, noise and link rate from macOS, with
-   no extra traffic, to separate "move closer" from "the access point is struggling"
-   in the verdict.
-3. **Simple mode.** Only the coloured icon and the sentence, with details one click
+2. **Simple mode.** Only the coloured icon and the sentence, with details one click
    away, plus an optional notification once a problem has lasted a few minutes
    (asks for Notifications permission).
-4. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
+3. **Automatic phone-tether mode.** A personal hotspot is detected because macOS
    marks the path as expensive and the first hop is also the router; the verdicts
    switch to phone wording ("move the phone near a window", "bring the laptop
    closer"), and internet reference pings slow down to save data.
-5. **"I restarted it."** Record a restart in the history and show its effect a few
+4. **"I restarted it."** Record a restart in the history and show its effect a few
    minutes later, for example "router latency 85 → 4 ms".
-6. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
+5. **Weekly summary.** Incidents per link, typical duration, time-of-day patterns and
    latency under load, to decide whether to move or replace equipment.
-7. **App icon.**
+6. **App icon.**
 
 Later: optionally power-cycling a bridge through a smart plug once verdicts have
 proven reliable.

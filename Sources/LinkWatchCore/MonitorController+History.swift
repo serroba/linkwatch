@@ -39,7 +39,8 @@ extension MonitorController {
   func record(_ pair: ProbePair, traffic: TrafficCounters?) {
     guard let ssid = session.profile?.ssid else { return }
     if let summary = week.record(
-      pair, health: session.window.health, ssid: ssid, at: now(), traffic: traffic)
+      pair, health: session.window.health, ssid: ssid, at: now(), traffic: traffic,
+      signal: signal)
     {
       persist(summary)
     }

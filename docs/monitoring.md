@@ -38,8 +38,10 @@ from evidence: the median and loss of each target over the last five pairs (live
 over one stored minute (history). A target is lost when half or more of its probes
 failed. Using the profile's thresholds, the first matching rule wins:
 
-1. AP lost, or AP median above the both-slow threshold → **access point** (weak
-   Wi-Fi signal or an overloaded access point), or **busy** when slow under load.
+1. AP lost, or AP median above the both-slow threshold → **weak signal** when the
+   Mac's Wi-Fi signal is below −70 dBm or within 20 dB of the noise, otherwise
+   **access point** (an overloaded or failing access point), or **busy** when slow
+   under load. Access point spikes with a weak signal are also **weak signal**.
 2. Router lost: with internet references working → **router silent** (traffic still
    flows, so the router only ignores pings, or Local Network access is missing); with
    references also lost → **bridge**; with no references probed → **router
@@ -115,6 +117,15 @@ calmer of the other two using the same rule as marked activities (spikes up by
 50 ms and at least doubled, or router loss up by ten points), and the off phase with
 the first to say whether the link recovered. Pausing, sleep or any network change
 cancels a running test. Each step and the conclusion are recorded as events.
+
+## Wi-Fi signal
+
+Each cycle reads the Mac's own radio through CoreWLAN, without sending traffic:
+signal strength (RSSI) and noise in dBm, their difference (SNR), the negotiated
+transmit rate, channel and band. Quality is *excellent* from −55 dBm and SNR 35 dB,
+*good* from −65 dBm and 25 dB, *weak* below −70 dBm or 20 dB, and *fair* otherwise.
+Minute summaries store the median RSSI, noise and transmit rate, hourly rollups the
+median RSSI, and the verdict uses a weak signal to explain a slow access point.
 
 ## Usage
 

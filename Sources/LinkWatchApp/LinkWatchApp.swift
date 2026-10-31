@@ -77,6 +77,9 @@ private struct DetailView: View {
       if let accessPoint = monitor.accessPointLatency, let router = monitor.routerLatency {
         Text(String(format: "Router − AP: %+.1f ms", router - accessPoint)).monospacedDigit()
       }
+      if let signal = monitor.signal {
+        Text("Wi-Fi signal: \(signal.summary)").monospacedDigit().font(.caption)
+      }
       if let usage = monitor.usage {
         Text(
           "Usage: ↓ \(StatusReport.rate(usage.downloadBitsPerSecond)) · ↑ \(StatusReport.rate(usage.uploadBitsPerSecond))"

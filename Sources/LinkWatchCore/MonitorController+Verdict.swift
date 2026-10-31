@@ -8,6 +8,7 @@ extension MonitorController {
     let thresholds = profile.thresholds
     var evidence = session.window.evidence
     evidence.busy = isBusy
+    evidence.weakSignal = signal?.isWeak ?? false
     let observed = Verdict(evidence, thresholds: thresholds)
     guard observed != verdict else {
       pendingVerdict = nil
@@ -54,7 +55,7 @@ extension MonitorController {
     case .busy: return .busy
     case .internet, .internetSpikes: return .internet
     case .accessPointSpikes, .bridgeSpikes: return .unstable
-    case .bridge, .accessPoint: return .actionNeeded
+    case .bridge, .accessPoint, .weakSignal: return .actionNeeded
     case .routerSilent, .routerUnreachable: return .routerQuiet
     }
   }
