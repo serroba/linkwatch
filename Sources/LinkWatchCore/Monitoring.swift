@@ -110,6 +110,17 @@ public struct MonitoringWindow: Sendable {
     return outcomes.isEmpty ? nil : loss(outcomes)
   }
 
+  /// Evidence from the last five pairs, the same span as the displayed medians.
+  public var evidence: LinkEvidence {
+    let recent = Array(samples.suffix(5))
+    let internet = recent.compactMap(\.internetBest)
+    return LinkEvidence(
+      accessPoint: TargetEvidence(median: accessPointMedian, loss: loss(recent.map(\.accessPoint))),
+      router: TargetEvidence(median: routerMedian, loss: loss(recent.map(\.router))),
+      internet: internet.isEmpty
+        ? nil : TargetEvidence(median: median(internet), loss: loss(internet)))
+  }
+
   /// Median of one reference, by its index in `InternetReference.all`.
   public func referenceMedian(_ index: Int) -> Double? {
     median(

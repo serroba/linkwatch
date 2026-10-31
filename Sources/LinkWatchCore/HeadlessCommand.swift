@@ -50,10 +50,12 @@ public enum HeadlessCommand: Equatable, Sendable {
       profile set --ssid NAME [--ap ADDRESS] [--router ADDRESS]
                   [--difference MS] [--recovery-difference MS] [--slow MS]
                   [--recovery-slow MS] [--sustained SECONDS] [--recovery SECONDS]
-                  [--internet on|off]
+                  [--internet on|off] [--bridge NAME | --no-bridge]
                              Create or change a profile; omitted values keep their current
                              setting. A new profile needs --ap and --router. --internet
                              also pings Cloudflare 1.1.1.1 and Google 8.8.8.8 (default on).
+                             --bridge names the device between the AP and the router, used
+                             in advice such as "Restart the TP-Link powerline adapters".
       profile remove NAME    Delete a profile; its network is no longer probed.
       history clear          Delete the stored week of history, as in Settings.
       authorize              Report Location permission, which is granted from the app's
@@ -205,6 +207,8 @@ public struct ProfileUpdate: Equatable, Sendable {
   public var sustainedSeconds: Double?
   public var recoverySeconds: Double?
   public var internetReferences: Switch?
+  /// A new bridge name, or `.some(nil)` to remove it.
+  public var bridgeName: String??
 
   public enum Switch: Equatable, Sendable {
     case enabled
@@ -224,6 +228,12 @@ public struct ProfileUpdate: Equatable, Sendable {
     recoverySlow = try Self.number("--recovery-slow", from: &options)
     sustainedSeconds = try Self.number("--sustained", from: &options)
     recoverySeconds = try Self.number("--recovery", from: &options)
+    if let bridge = try HeadlessCommand.take(value: "--bridge", from: &options) {
+      bridgeName = .some(bridge)
+    } else if let index = options.firstIndex(of: "--no-bridge") {
+      options.remove(at: index)
+      bridgeName = .some(nil)
+    }
     switch try HeadlessCommand.take(value: "--internet", from: &options) {
     case nil: internetReferences = nil
     case "on": internetReferences = .enabled
@@ -242,14 +252,21 @@ public struct ProfileUpdate: Equatable, Sendable {
     guard profile != nil else { return nil }
     if let accessPoint { profile?.accessPoint = accessPoint }
     if let router { profile?.router = router }
-    if let difference { profile?.thresholds.difference = difference }
-    if let recoveryDifference { profile?.thresholds.recoveryDifference = recoveryDifference }
-    if let slow { profile?.thresholds.slow = slow }
-    if let recoverySlow { profile?.thresholds.recoverySlow = recoverySlow }
-    if let sustainedSeconds { profile?.thresholds.sustainedSeconds = sustainedSeconds }
-    if let recoverySeconds { profile?.thresholds.recoverySeconds = recoverySeconds }
+    if let thresholds = profile?.thresholds { profile?.thresholds = applied(to: thresholds) }
     if let internetReferences { profile?.internetReferences = internetReferences == .enabled }
+    if let bridgeName { profile?.bridgeName = bridgeName }
     return profile
+  }
+
+  private func applied(to thresholds: Thresholds) -> Thresholds {
+    var thresholds = thresholds
+    if let difference { thresholds.difference = difference }
+    if let recoveryDifference { thresholds.recoveryDifference = recoveryDifference }
+    if let slow { thresholds.slow = slow }
+    if let recoverySlow { thresholds.recoverySlow = recoverySlow }
+    if let sustainedSeconds { thresholds.sustainedSeconds = sustainedSeconds }
+    if let recoverySeconds { thresholds.recoverySeconds = recoverySeconds }
+    return thresholds
   }
 
   private static func number(_ name: String, from options: inout [String])

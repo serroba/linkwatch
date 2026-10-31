@@ -8,10 +8,13 @@ public struct NetworkProfile: Codable, Equatable, Identifiable, Sendable {
   public var thresholds: Thresholds
   /// Whether to also probe `InternetReference.all`, which sends traffic beyond the router.
   public var internetReferences: Bool
+  /// What links the access point to the router, such as "TP-Link powerline adapters".
+  public var bridgeName: String?
 
   public init(
     id: UUID = UUID(), ssid: String, accessPoint: String, router: String,
-    thresholds: Thresholds = Thresholds(), internetReferences: Bool = true
+    thresholds: Thresholds = Thresholds(), internetReferences: Bool = true,
+    bridgeName: String? = nil
   ) {
     self.id = id
     self.ssid = ssid
@@ -19,12 +22,15 @@ public struct NetworkProfile: Codable, Equatable, Identifiable, Sendable {
     self.router = router
     self.thresholds = thresholds
     self.internetReferences = internetReferences
+    self.bridgeName = bridgeName
   }
 
   public var isValid: Bool {
     !ssid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && ssid.utf8.count <= 32 && Self.validAddress(accessPoint)
       && Self.validAddress(router) && accessPoint != router && thresholds.isValid
+      && bridgeName.map { !$0.trimmingCharacters(in: .whitespaces).isEmpty && $0.count <= 60 }
+        ?? true
   }
 
   public static func validAddress(_ address: String) -> Bool {
@@ -103,6 +109,7 @@ extension NetworkProfile {
       router: try container.decode(String.self, forKey: .router),
       thresholds: try container.decode(Thresholds.self, forKey: .thresholds),
       internetReferences: try container.decodeIfPresent(Bool.self, forKey: .internetReferences)
-        ?? true)
+        ?? true,
+      bridgeName: try container.decodeIfPresent(String.self, forKey: .bridgeName))
   }
 }
