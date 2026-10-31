@@ -25,7 +25,7 @@ swift build -Xswiftc -warnings-as-errors
 LINKWATCH_TEST_LOOPBACK=1 swift test --parallel --enable-code-coverage -Xswiftc -warnings-as-errors
 python3 scripts/check_coverage.py "$(swift test --show-codecov-path)" \
   --gate Sources/LinkWatchCore=90 --file-floor Sources/LinkWatchCore=85 \
-  --report Sources/LinkWatchNetworking --report Sources/LinkWatchApp
+  --gate Sources/LinkWatchNetworking=85 --report Sources/LinkWatchApp
 LINKWATCH_TEST_LOOPBACK=1 swift test --sanitize=thread --scratch-path .build/tsan
 swiftlint lint --strict --quiet
 periphery scan
@@ -33,8 +33,11 @@ periphery scan
 
 Coverage: `LinkWatchCore` holds the monitoring decisions and must keep at least 90%
 line coverage overall and 85% in every file; new logic belongs there, with tests.
-Networking and the app are reported but not gated: they wrap system calls and SwiftUI,
-and stay thin. CI writes the table to each run's job summary.
+`LinkWatchNetworking` must keep 85% overall; its tests read real system tables (ARP,
+loopback addresses) and, in CI, ping loopback. Local Command Line Tools runs export
+coverage for the core tests only, so CI is the source of truth for networking. The app
+(SwiftUI and macOS services) is reported but not gated and stays thin. CI writes the
+table to each run's job summary.
 
 `.swift-format` owns layout and forbids force unwraps, force `try` and implicitly
 unwrapped optionals. `.swiftlint.yml` adds semantic and complexity rules; split a
