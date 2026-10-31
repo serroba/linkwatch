@@ -119,36 +119,54 @@ public struct StatusReport: Codable, Equatable, Sendable {
 }
 
 extension StatusReport {
+  // Built line by line: one large expression exceeds Swift 6.1's type-checking budget.
   /// A human-readable summary; addresses are local network details, so share it with care.
   public var text: String {
-    var lines = [
-      "State:       \(state.rawValue) (\(health)) — \(reason)",
-      "Permission:  \(permitted ? "granted" : "missing")"
-        + (paused ? " · paused" : "") + (sleeping ? " · sleeping" : ""),
-      "Wi-Fi:       authorization \(wifi.authorization) · interface \(wifi.interface ?? "none") · "
-        + (wifi.poweredOn ? "on" : "off") + " · SSID \(wifi.ssidVisible ? "visible" : "hidden")"
-        + " · BSSID \(wifi.bssidVisible ? "visible" : "hidden")",
-      "Network:     "
-        + (network.map { "\($0.ssid) · BSSID \($0.bssid) · \($0.interface)" } ?? "unavailable"),
-      "Profile:     "
-        + (profile.map { "AP \($0.accessPoint) · Router \($0.router)" } ?? "none selected"),
-      "Latency:     AP \(Self.milliseconds(latency.accessPoint)) · Router \(Self.milliseconds(latency.router))"
-        + (latency.routerMinusAccessPoint.map { String(format: " · Router − AP %+.1f ms", $0) }
-          ?? ""),
+    var lines: [String] = []
+    lines.append("State:       \(state.rawValue) (\(health)) — \(reason)")
+    var permission = "Permission:  " + (permitted ? "granted" : "missing")
+    if paused { permission += " · paused" }
+    if sleeping { permission += " · sleeping" }
+    lines.append(permission)
+    let power = wifi.poweredOn ? "on" : "off"
+    let ssid = wifi.ssidVisible ? "visible" : "hidden"
+    let bssid = wifi.bssidVisible ? "visible" : "hidden"
+    lines.append(
+      "Wi-Fi:       authorization \(wifi.authorization) · interface \(wifi.interface ?? "none")"
+        + " · \(power) · SSID \(ssid) · BSSID \(bssid)")
+    let networkText: String =
+      network.map { "\($0.ssid) · BSSID \($0.bssid) · \($0.interface)" } ?? "unavailable"
+    lines.append("Network:     \(networkText)")
+    let profileText: String =
+      profile.map { "AP \($0.accessPoint) · Router \($0.router)" } ?? "none selected"
+    lines.append("Profile:     \(profileText)")
+    var latencyText =
+      "Latency:     AP \(Self.milliseconds(latency.accessPoint))"
+      + " · Router \(Self.milliseconds(latency.router))"
+    if let difference = latency.routerMinusAccessPoint {
+      latencyText += String(format: " · Router − AP %+.1f ms", difference)
+    }
+    lines.append(latencyText)
+    lines.append(
       String(
         format: "Loss:        AP %.0f%% · Router %.0f%% over %d samples",
-        latency.accessPointLoss * 100, latency.routerLoss * 100, samples),
-      "Alert:       "
-        + (alertSeconds.map { "active for \(Int($0)) s" }
-          ?? evaluatingSeconds.map { "evaluating for \(Int($0)) s" } ?? "none"),
-      "History:     \(history.count) pairs, \(historyFailures) with a failed probe",
-      "Discovery:   " + (discovery.map(Self.summary) ?? "not run"),
-      "Suggestion:  " + (suggestion.map(Self.summary) ?? "none"),
-      "Profiles:    \(profiles.count) saved"
-        + profiles.map { "\n  - \($0.ssid): AP \($0.accessPoint) · Router \($0.router)" }.joined(),
-    ]
+        latency.accessPointLoss * 100, latency.routerLoss * 100, samples))
+    lines.append("Alert:       \(alertText)")
+    lines.append("History:     \(history.count) pairs, \(historyFailures) with a failed probe")
+    lines.append("Discovery:   " + (discovery.map(Self.summary) ?? "not run"))
+    lines.append("Suggestion:  " + (suggestion.map(Self.summary) ?? "none"))
+    lines.append("Profiles:    \(profiles.count) saved")
+    for profile in profiles {
+      lines.append("  - \(profile.ssid): AP \(profile.accessPoint) · Router \(profile.router)")
+    }
     if let storageError { lines.append("Storage:     \(storageError)") }
     return lines.joined(separator: "\n")
+  }
+
+  private var alertText: String {
+    if let alertSeconds { return "active for \(Int(alertSeconds)) s" }
+    if let evaluatingSeconds { return "evaluating for \(Int(evaluatingSeconds)) s" }
+    return "none"
   }
 
   private static func milliseconds(_ value: Double?) -> String {
