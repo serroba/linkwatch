@@ -55,6 +55,10 @@ removes everything.
 
 ## Sharing
 
-LinkWatch sends nothing anywhere. Command-line output, and the planned **Export
-report**, contain your network name and local addresses; they only leave the Mac if
-you share them. Redact addresses before posting them publicly.
+LinkWatch sends nothing anywhere. **Export report…** and `scripts/linkwatch export`
+write a folder (owner-only) in `~/Library/Application Support/io.github.serroba.LinkWatch/Reports`
+containing the diagnosis, the network name, local addresses and every stored minute
+for the period; it only leaves the Mac if you send it. `export --redact` replaces
+network names, local addresses and hardware addresses with placeholders, keeping
+the public reference hosts, for sharing more widely. Command-line output contains
+the same details; redact it before posting publicly.

@@ -1,6 +1,6 @@
 ---
 name: diagnose-network
-description: Diagnose this Mac's network with LinkWatch's recorded evidence. Use when the user asks what is going on with their network, Wi-Fi or internet, why it was slow or down at some time ("last night", "this morning"), whether to restart the powerline adapters, router or access point, or whether the problem is their internet provider.
+description: Diagnose a Mac's network with LinkWatch's recorded evidence, on this Mac or from an exported LinkWatch report folder sent from another Mac. Use when the user asks what is going on with their network, Wi-Fi or internet, why it was slow or down at some time ("last night", "this morning"), whether to restart the powerline adapters, router or access point, whether the problem is their internet provider, or shares a "LinkWatch report" folder.
 ---
 
 # Diagnose the network with LinkWatch
@@ -25,6 +25,15 @@ scripts/linkwatch diagnose --hours 24 --json
   stored minute; `scripts/linkwatch incidents --days 7` lists problems with evidence.
 - Always use `scripts/linkwatch`, never the bare executable: run directly from a shell,
   macOS hides the Wi-Fi name and the report looks broken.
+
+### A report from another Mac
+
+When the user shares a `LinkWatch report …` folder (for example sent from a family
+member's Mac by AirDrop), do not run `diagnose`: this Mac's data is not theirs. Read
+`report.json` (the same structure as `diagnose --json`) and `report.txt`, and use
+`minutes.json` for a specific moment. `generatedAt` and `appVersion` say when and
+with which version it was made; the period ends at `generatedAt`. Redacted reports
+replace names and addresses with `network-N`, `address-N` and `device-N`.
 
 ## 2. Check the data can answer the question
 

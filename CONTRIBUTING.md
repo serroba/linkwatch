@@ -77,6 +77,13 @@ code signature, so macOS stops granting it Local Network access and the router l
 silent. Use `scripts/linkwatch`, not the bare executable, for commands; see
 [docs/cli.md](docs/cli.md).
 
+Never launch a differently signed copy on the same Mac as your development build,
+for example a release downloaded to test the installer. Both share the bundle
+identifier, and macOS moves the Location and Local Network grants to whichever copy
+asked last, so the development build silently stops monitoring. Test installs on
+another Mac or user account, then re-grant permissions from the development build's
+Settings if it happened.
+
 ## Documentation
 
 Behaviour changes update the documents that describe them in the same pull request:

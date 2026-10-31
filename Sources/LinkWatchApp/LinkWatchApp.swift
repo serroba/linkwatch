@@ -50,6 +50,7 @@ private enum ChartRange: String, CaseIterable, Identifiable {
 @MainActor
 private final class DetailOptions: ObservableObject {
   @Published var range = ChartRange.hour
+  @Published var exportMessage: String?
 }
 
 private struct DetailView: View {
@@ -144,8 +145,23 @@ private struct DetailView: View {
           openWindow(id: "settings")
           NSApp.activate(ignoringOtherApps: true)
         }
+        Button("Export report…") {
+          do {
+            _ = try Reports.exportFromPanel(monitor)
+            options.exportMessage =
+              "Report saved and shown in Finder. Send the folder by AirDrop or Messages."
+          } catch {
+            options.exportMessage = "The report could not be saved: \(error.localizedDescription)"
+          }
+        }
+        .help(
+          "Saves the last week's diagnosis and measurements, including your network name and local addresses, and shows it in Finder."
+        )
         Spacer()
         Button("Quit") { NSApp.terminate(nil) }
+      }
+      if let message = options.exportMessage {
+        Text(message).font(.caption).foregroundStyle(.secondary)
       }
     }
     .padding(18)
