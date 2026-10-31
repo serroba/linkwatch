@@ -31,6 +31,14 @@ and by at most seven in the last byte, which is how vendors usually derive radio
 addresses. Zero or several matches leave the AP unknown; a match on the router
 means there is no separate AP. Suggestions are dismissed per discovered address set.
 
+**Find AP** is the only feature that sends traffic to discover devices. It runs only
+on request, takes the Wi-Fi interface's IPv4 address and netmask, refuses addresses
+outside 10/8, 172.16/12, 192.168/16 and 169.254/16 and subnets larger than /22, and
+sends one ICMP echo to every other host address, at most 32 at a time, bound to the
+Wi-Fi interface. Replies are ignored; the point is that macOS resolves each address
+with ARP. Discovery then reruns against the refreshed cache. A /24 takes roughly
+half a minute because absent hosts time out after one second.
+
 ## Native probes
 
 The IPv4 adapter uses an unprivileged datagram ICMP socket, bound with
