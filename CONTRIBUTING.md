@@ -36,10 +36,21 @@ enable the `ExistentialAny`, `InternalImportsByDefault` and `MemberImportVisibil
 upcoming features. CI installs SwiftLint and Periphery from pinned releases and
 verifies their SHA-256 checksums with `scripts/install_tool.sh`; update the version
 and checksum together. With only Command Line Tools installed, run SwiftLint with
-`TOOLCHAIN_DIR=/Library/Developer/CommandLineTools`. Periphery needs an index store,
-so with Swift 6.4 build with `swift build --build-system native --scratch-path
-.build/native` and scan with `--skip-build --index-store-path
-.build/native/debug/index/store`.
+`TOOLCHAIN_DIR=/Library/Developer/CommandLineTools`. Periphery in CI also indexes
+the test targets, so scan them locally too. With Swift 6.4 and only Command Line
+Tools, build the index with the native build system and the Testing framework path:
+
+```sh
+FW=/Library/Developer/CommandLineTools/Library/Developer/Frameworks
+swift build --build-tests --build-system native --scratch-path .build/native-tests \
+  -Xswiftc -F -Xswiftc "$FW" -Xlinker -F -Xlinker "$FW" \
+  -Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing
+periphery scan --skip-build --index-store-path .build/native-tests/arm64-apple-macosx/debug/index/store
+```
+
+CI uses Swift 6.1, which type-checks large expressions more slowly than 6.4; build
+with `-Xswiftc -Xfrontend -Xswiftc -warn-long-expression-type-checking=150` (tests
+too, with `--build-tests`) to find expressions to split before CI rejects them.
 
 Do not remove package detection to skip a failing Swift build. Add meaningful
 tests for monitoring decisions, failed probes and network changes. Keep pure
