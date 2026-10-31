@@ -30,6 +30,7 @@ The menu bar icon is coloured by the current verdict, with live numbers next to 
 | Orange globe | The internet provider is having trouble; nothing to fix at home. |
 | Red warning | A home link needs action: the access point, or the bridge between it and the router. |
 | Purple stop | The router is not answering LinkWatch, usually a permission rather than a fault. |
+| Orange pulse | Lag spikes on a home link: typical latency is fine, but frequent slow moments make calls stutter. |
 | Grey pause | Not monitoring: paused, an unselected network or a missing permission. |
 
 Clicking it opens the advice, latency for each link, packet loss, download and

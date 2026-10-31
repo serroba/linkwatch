@@ -10,6 +10,7 @@ extension StatusLight {
     case .internet: .systemOrange
     case .actionNeeded: .systemRed
     case .routerQuiet: .systemPurple
+    case .unstable: .systemOrange
     }
   }
 
@@ -22,6 +23,7 @@ extension StatusLight {
     case .internet: "globe"
     case .actionNeeded: "exclamationmark.triangle.fill"
     case .routerQuiet: "xmark.octagon.fill"
+    case .unstable: "waveform.path.ecg"
     }
   }
 

@@ -79,3 +79,30 @@ public enum HistoryRollup {
     return known.isEmpty ? nil : known.reduce(0, &+)
   }
 }
+
+// Explicit nulls, matching the rest of the JSON output.
+
+extension HourLink {
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(median, forKey: .median)
+    try container.encode(p95, forKey: .p95)
+    try container.encode(loss, forKey: .loss)
+  }
+}
+
+extension HourSummary {
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(start, forKey: .start)
+    try container.encode(minutesRecorded, forKey: .minutesRecorded)
+    try container.encode(samples, forKey: .samples)
+    try container.encode(accessPoint, forKey: .accessPoint)
+    try container.encode(router, forKey: .router)
+    try container.encode(internet, forKey: .internet)
+    try container.encode(received, forKey: .received)
+    try container.encode(sent, forKey: .sent)
+    try container.encode(problemMinutes, forKey: .problemMinutes)
+    try container.encode(commonProblem, forKey: .commonProblem)
+  }
+}

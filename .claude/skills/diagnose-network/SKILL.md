@@ -63,6 +63,7 @@ already group problem minutes and name the most likely cause.
 | `routerUnreachable` | Router silent, no internet evidence | Router lost, internet not probed |
 | `internet` | Provider trouble, nothing to fix at home | Home links fine, internet slow or lost |
 | `busy` | The Mac's own large transfer slowed things | Slow (not lost) while moving a lot of data |
+| `accessPointSpikes`, `bridgeSpikes`, `internetSpikes` | Frequent lag spikes starting on that link | Medians fine, 95th percentile 100 ms+ above the previous link |
 
 - Quote times in the user's local time and give durations ("19:40–20:05, 25 min").
 - Cite the numbers that justify the cause, for example "the AP stayed at 3 ms while
@@ -71,6 +72,12 @@ already group problem minutes and name the most likely cause.
 - Give at most one action per incident, matching the verdict's `action` text and the
   profile's bridge name (for example "Restart the TP-Link powerline adapters").
 - Mention patterns across incidents (same time of day, recurring after heavy usage).
+- Look beyond verdicts at minute 95th percentiles: spikes felt in calls can hide
+  behind healthy medians. LinkWatch only sees this Mac's traffic, so spikes while
+  the Mac is idle may come from other devices loading the same link.
+- Two summaries with the same `start` come from a restart (each copy flushed part of
+  the minute); a short "router silent" right after a rebuild or reinstall is usually
+  a permission side effect, not the network.
 
 ## 4. Respect privacy and safety
 

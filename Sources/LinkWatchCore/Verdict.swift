@@ -4,10 +4,13 @@ import Foundation
 public struct TargetEvidence: Equatable, Sendable {
   public var median: Double?
   public var loss: Double
+  /// The 95th percentile over about a minute, which reveals lag spikes the median hides.
+  public var p95: Double?
 
-  public init(median: Double?, loss: Double) {
+  public init(median: Double?, loss: Double, p95: Double? = nil) {
     self.median = median
     self.loss = loss
+    self.p95 = p95
   }
 
   /// Half or more of the probes failing, or no successful probe at all, counts as lost.
@@ -35,9 +38,11 @@ public struct LinkEvidence: Equatable, Sendable {
 
   /// Evidence for a stored minute; `peakBitsPerSecond` is the busiest minute on that network.
   public init(_ minute: MinuteSummary, peakBitsPerSecond: Double = 0) {
-    accessPoint = TargetEvidence(median: minute.accessPoint.median, loss: minute.accessPoint.loss)
-    router = TargetEvidence(median: minute.router.median, loss: minute.router.loss)
-    internet = minute.internet.map { TargetEvidence(median: $0.median, loss: $0.loss) }
+    accessPoint = TargetEvidence(
+      median: minute.accessPoint.median, loss: minute.accessPoint.loss, p95: minute.accessPoint.p95)
+    router = TargetEvidence(
+      median: minute.router.median, loss: minute.router.loss, p95: minute.router.p95)
+    internet = minute.internet.map { TargetEvidence(median: $0.median, loss: $0.loss, p95: $0.p95) }
     busy = minute.bitsPerSecond.map { Load.isBusy($0, peak: peakBitsPerSecond) } ?? false
   }
 }
@@ -77,9 +82,18 @@ public enum Verdict: String, Codable, Equatable, Sendable {
   case internet
   /// A link is slow while the Mac itself is moving a lot of data, so nothing is broken.
   case busy
+  /// Typical latency is fine but the Wi-Fi link to the access point has frequent spikes.
+  case accessPointSpikes
+  /// Typical latency is fine but spikes start between the access point and the router.
+  case bridgeSpikes
+  /// Typical latency is fine but spikes start beyond the router.
+  case internetSpikes
 
   /// Internet references must be slower than the router by this much to blame the provider.
   public static let internetMargin: Double = 100
+  /// A link's 95th percentile must exceed the previous link's by this much to count as spiky:
+  /// at least one probe in twenty that slow is felt as stutter in calls and games.
+  public static let spikeMargin: Double = 100
 
   /// Classifies evidence with the profile's thresholds; the first failing link wins.
   public init(_ evidence: LinkEvidence, thresholds: Thresholds) {
@@ -106,9 +120,23 @@ public enum Verdict: String, Codable, Equatable, Sendable {
       (internet.median ?? 0) - (router.median ?? 0) > Self.internetMargin
     {
       self = evidence.busy ? .busy : .internet
+    } else if let spikes = Self.spikes(evidence) {
+      self = evidence.busy ? .busy : spikes
     } else {
       self = .allClear
     }
+  }
+
+  /// The first link whose worst probes are much slower than the link before it.
+  private static func spikes(_ evidence: LinkEvidence) -> Verdict? {
+    let accessPoint = evidence.accessPoint.p95 ?? 0
+    let router = evidence.router.p95 ?? accessPoint
+    if accessPoint > spikeMargin { return .accessPointSpikes }
+    if router - accessPoint > spikeMargin { return .bridgeSpikes }
+    if let internet = evidence.internet?.p95, internet - router > spikeMargin {
+      return .internetSpikes
+    }
+    return nil
   }
 
   /// One plain sentence, naming the bridge when the profile does.
@@ -124,6 +152,11 @@ public enum Verdict: String, Codable, Equatable, Sendable {
     case .internet: "Your internet provider is having trouble."
     case .busy:
       "The connection is busy with a large download or upload, which slows everything else."
+    case .accessPointSpikes: "The Wi-Fi connection has frequent lag spikes."
+    case .bridgeSpikes:
+      "The connection between the access point and the router"
+        + (bridge.map { " (\($0))" } ?? "") + " has frequent lag spikes."
+    case .internetSpikes: "The internet connection has frequent lag spikes."
     }
   }
 
@@ -145,6 +178,13 @@ public enum Verdict: String, Codable, Equatable, Sendable {
         + " Turning on internet reference points lets LinkWatch tell the difference."
     case .internet: "Nothing to fix at home; wait, or contact the provider if it lasts."
     case .busy: "Nothing is broken. Wait for the transfer to finish, or pause it."
+    case .accessPointSpikes:
+      "If calls or video stutter, move closer to the access point; if it continues nearby, restart the access point."
+    case .bridgeSpikes:
+      "If calls or video stutter, restart "
+        + (bridge.map { "the \($0)." } ?? "the device linking the access point to the router.")
+        + " Heavy use by other devices at home can cause this too."
+    case .internetSpikes: "Nothing to fix at home; if calls stutter for long, contact the provider."
     }
   }
 

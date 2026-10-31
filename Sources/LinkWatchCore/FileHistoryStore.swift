@@ -1,5 +1,18 @@
 public import Foundation
 
+/// Reads stored history without ever writing it, for processes other than the menu bar app:
+/// a concurrent rewrite (pruning) could otherwise drop a minute the app just appended.
+public struct ReadOnlyHistoryStore: HistoryStore {
+  private let store: FileHistoryStore
+
+  public init(directory: URL) { store = FileHistoryStore(directory: directory) }
+
+  public func load(since date: Date) throws -> [MinuteSummary] { try store.load(since: date) }
+  public func append(_ summary: MinuteSummary) throws {}
+  public func prune(before date: Date) throws {}
+  public func clear() throws {}
+}
+
 /// Stores minute summaries as JSON Lines in a private file.
 ///
 /// Appends add one line, so an interrupted write loses at most that minute. Unreadable

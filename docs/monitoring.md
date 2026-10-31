@@ -49,7 +49,13 @@ failed. Using the profile's thresholds, the first matching rule wins:
    **busy** when the Mac is moving a lot of data.
 4. Internet references lost → **internet** provider; slower than the router by more
    than 100 ms → **internet**, or **busy** under load.
-5. Otherwise **all clear**.
+5. Typical latency fine, but the 95th percentile over about a minute is more than
+   100 ms above the previous link's → **lag spikes** on that link: **access point
+   spikes** (its own 95th percentile above 100 ms), **bridge spikes** (router minus
+   access point) or **internet spikes** (internet minus router), or **busy** under
+   load. At least one probe in twenty that slow is felt as stutter in calls and games,
+   even when the median looks healthy.
+6. Otherwise **all clear**.
 
 **Busy** means the faster direction of the Mac's traffic is at least 1 Mbit/s and at
 least half the busiest rate seen on that network in the stored week (or this
@@ -65,10 +71,13 @@ minutes are classified when read, so improved rules apply to the whole week.
 ## Incidents
 
 Stored minutes are classified with the verdict rules (with each network's thresholds
-and busiest minute) and problem minutes are grouped per network into incidents.
-Up to two clear or missing minutes inside a run still count as one incident, so a
-flapping link reads as one problem; runs of fewer than two problem minutes are
-treated as blips. An incident's verdict is its most common problem verdict, with
+and busiest minute) and problem minutes are grouped per network and per failing link
+into incidents: slow and spiky minutes on the same link belong together, while a
+change of link (for example from a silent router to bridge spikes) starts a new
+incident. Up to two clear or missing minutes inside a run still count as one
+incident, so a flapping link reads as one problem; runs of fewer than two problem
+minutes are treated as blips, and a blip about another link does not split an
+incident. An incident's verdict is its most common problem verdict, with
 ties resolved towards the one needing action (bridge, access point, internet,
 router, busy). Evidence per link is the slowest minute median and the
 sample-weighted loss, plus bytes moved. Incidents are computed when read, so rule
@@ -97,6 +106,11 @@ pause, sleep, network change and quit, so partial minutes are kept.
 Completed minutes are written immediately, so quitting or a crash loses at most the
 current partial minute, and a normal quit or shutdown flushes that too. After a
 restart the hour chart shows stored minute medians for the time before launch.
+
+Only the menu bar app writes history. Command-line runs read it through a read-only
+store, so they can never rewrite the file while the app appends to it. A restart
+can store two partial summaries for the same minute (one flushed by the quitting
+copy, one from the new copy); rollups count the minute once.
 
 Summaries are appended as JSON Lines to
 `~/Library/Application Support/io.github.serroba.LinkWatch/history.jsonl` (directory

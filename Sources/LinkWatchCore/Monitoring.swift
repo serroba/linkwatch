@@ -110,15 +110,27 @@ public struct MonitoringWindow: Sendable {
     return outcomes.isEmpty ? nil : loss(outcomes)
   }
 
-  /// Evidence from the last five pairs, the same span as the displayed medians.
+  /// Evidence for the verdict, from the same span as the displayed medians.
+  ///
+  /// Medians and loss use the last five pairs; the 95th percentile uses the last thirty,
+  /// about a minute, matching what stored minutes record.
   public var evidence: LinkEvidence {
     let recent = Array(samples.suffix(5))
+    let minute = Array(samples.suffix(30))
     let internet = recent.compactMap(\.internetBest)
+    let internetMinute = minute.compactMap(\.internetBest)
     return LinkEvidence(
-      accessPoint: TargetEvidence(median: accessPointMedian, loss: loss(recent.map(\.accessPoint))),
-      router: TargetEvidence(median: routerMedian, loss: loss(recent.map(\.router))),
+      accessPoint: TargetEvidence(
+        median: accessPointMedian, loss: loss(recent.map(\.accessPoint)),
+        p95: TargetSummary(minute.map(\.accessPoint)).p95),
+      router: TargetEvidence(
+        median: routerMedian, loss: loss(recent.map(\.router)),
+        p95: TargetSummary(minute.map(\.router)).p95),
       internet: internet.isEmpty
-        ? nil : TargetEvidence(median: median(internet), loss: loss(internet)))
+        ? nil
+        : TargetEvidence(
+          median: median(internet), loss: loss(internet),
+          p95: TargetSummary(internetMinute).p95))
   }
 
   /// Median of one reference, by its index in `InternetReference.all`.

@@ -41,6 +41,8 @@ public enum StatusLight: String, Codable, Equatable, Sendable {
   case actionNeeded
   /// The router is not answering LinkWatch; often a permission rather than a fault.
   case routerQuiet
+  /// Typical latency is fine but a home link has frequent lag spikes.
+  case unstable
 }
 
 extension MonitorController {
@@ -49,7 +51,8 @@ extension MonitorController {
     switch verdict {
     case .allClear: return .good
     case .busy: return .busy
-    case .internet: return .internet
+    case .internet, .internetSpikes: return .internet
+    case .accessPointSpikes, .bridgeSpikes: return .unstable
     case .bridge, .accessPoint: return .actionNeeded
     case .routerSilent, .routerUnreachable: return .routerQuiet
     }
